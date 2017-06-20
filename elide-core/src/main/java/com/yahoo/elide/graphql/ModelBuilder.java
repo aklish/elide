@@ -41,7 +41,7 @@ public class ModelBuilder {
     public static final String ARGUMENT_DATA = "data";
     public static final String ARGUMENT_FILTER = "filter";
     public static final String ARGUMENT_FIRST = "first";
-    public static final String ARGUMENT_ID = "id";
+    public static final String ARGUMENT_ID = "ids";
     public static final String ARGUMENT_OFFSET = "offset";
     public static final String ARGUMENT_OPERATION = "op";
     public static final String ARGUMENT_SORT = "sort";
@@ -51,7 +51,7 @@ public class ModelBuilder {
     private EntityDictionary dictionary;
     private DataFetcher dataFetcher;
     private GraphQLArgument relationshipOpArg;
-    private GraphQLArgument idArgument;
+    private GraphQLArgument idsArgument;
     private GraphQLArgument filterArgument;
     private GraphQLArgument pageOffsetArgument;
     private GraphQLArgument pageFirstArgument;
@@ -74,9 +74,9 @@ public class ModelBuilder {
                 .defaultValue(RelationshipOp.FETCH)
                 .build();
 
-        idArgument = newArgument()
+        idsArgument = newArgument()
                 .name(ARGUMENT_ID)
-                .type(Scalars.GraphQLString)
+                .type(new GraphQLList(Scalars.GraphQLString))
                 .build();
 
         filterArgument = newArgument()
@@ -156,7 +156,7 @@ public class ModelBuilder {
                     .name(entityName)
                     .dataFetcher(dataFetcher)
                     .argument(relationshipOpArg)
-                    .argument(idArgument)
+                    .argument(idsArgument)
                     .argument(filterArgument)
                     .argument(sortArgument)
                     .argument(pageFirstArgument)
@@ -259,7 +259,7 @@ public class ModelBuilder {
                                 .argument(sortArgument)
                                 .argument(pageOffsetArgument)
                                 .argument(pageFirstArgument)
-                                .argument(idArgument)
+                                .argument(idsArgument)
                                 .argument(buildInputObjectArgument(relationshipClass, true))
                                 .type(new GraphQLList(new GraphQLTypeReference(relationshipEntityName)))
                 );

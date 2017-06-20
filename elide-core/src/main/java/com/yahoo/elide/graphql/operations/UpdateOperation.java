@@ -41,7 +41,7 @@ public class UpdateOperation {
     private final Field field;
     private final RequestScope requestScope;
     private final EntityDictionary dictionary;
-    private final String id;
+    private final List<Optional<String>> ids;
     private final Object source;
     private final GraphQLType outputType;
     private final List<Map<String, Object>> requestData;
@@ -54,7 +54,7 @@ public class UpdateOperation {
         field = environment.field;
         requestScope = environment.requestScope;
         dictionary = requestScope.getDictionary();
-        id = environment.id.orElse(null);
+        ids = environment.id;
         source = environment.source;
         outputType = environment.outputType;
         requestData = environment.data;
@@ -94,56 +94,56 @@ public class UpdateOperation {
     }
 
     private void processActions(Collection<PersistentResource> objectsToUpdate, Map<String, Object> input) {
-        String entityId = (String) input.get(idFieldName);
-        boolean foundEntityId = entityId != null;
-        if (!foundEntityId) {
-            entityId = UUID.randomUUID().toString();
-        }
-        final String entityIdCapture = entityId;
-        input.entrySet().stream()
-                .forEach(entry -> {
-                    String fieldName = entry.getKey();
-                    Object value = entry.getValue();
-                    // TODO: Should be able to reuse this logic for non-rootable objects as well. Perhaps store parent?
-                    // This happens when we didn't load the object (i.e. not in our datastore).
-                    if ((isRoot && !foundEntityId)
-                            || (objectsToUpdate.stream().noneMatch(p -> p.matchesId(entityIdCapture)))) {
-                        PersistentResource result =
-                                PersistentResource.createObject(null, entityClass, requestScope, entityIdCapture);
-                        objectsToUpdate.add(result);
-                    }
-                    Stream<PersistentResource> objects = objectsToUpdate.stream()
-                            .filter(p -> (entityIdCapture == null) ? true : p.matchesId(entityIdCapture));
-                    if (dictionary.isAttribute(entityClass, fieldName)) {
-                        // Update attribute value
-                        objects.forEach(o -> o.updateAttribute(fieldName, value));
-                    } else if (dictionary.isRelation(entityClass, fieldName)) {
-                        // Replace relationship
-                        String relName = dictionary.getJsonAliasFor(
-                                dictionary.getParameterizedType(entityClass, fieldName));
-                        Set<PersistentResource> newRelationships = new HashSet<>();
-                        if (value != null) {
-                            // TODO: For a to-many relationship this would be a list... Need to handle that case
-                            newRelationships.add(PersistentResourceFetcher
-                                    .load(relName, value.toString(), requestScope));
-                        }
-                        objects.forEach(o -> o.updateRelation(fieldName, newRelationships));
-                    } else if (fieldName.equals(dictionary.getIdFieldName(entityClass))) {
-                        if (id == null) {
-                            // TODO: In case of list, should ensure we're modifying the correct object instance
-                            return; // Not updating id
-                        }
-                        // Set id value
-                        if (value == null) {
-                            throw new WebApplicationException("Cannot set object identifier to null",
-                                    HttpStatus.SC_BAD_REQUEST);
-                        }
-                        objects.forEach(o -> o.setId(value.toString()));
-                    } else {
-                        throw new WebApplicationException("Attempt to update unknown field: '"
-                                + fieldName + "'", HttpStatus.SC_BAD_REQUEST);
-                    }
-                });
+//        String entityId = (String) input.get(idFieldName);
+//        boolean foundEntityId = entityId != null;
+//        if (!foundEntityId) {
+//            entityId = UUID.randomUUID().toString();
+//        }
+//        final String entityIdCapture = entityId;
+//        input.entrySet().stream()
+//                .forEach(entry -> {
+//                    String fieldName = entry.getKey();
+//                    Object value = entry.getValue();
+//                    // TODO: Should be able to reuse this logic for non-rootable objects as well. Perhaps store parent?
+//                    // This happens when we didn't load the object (i.e. not in our datastore).
+//                    if ((isRoot && !foundEntityId)
+//                            || (objectsToUpdate.stream().noneMatch(p -> p.matchesId(entityIdCapture)))) {
+//                        PersistentResource result =
+//                                PersistentResource.createObject(null, entityClass, requestScope, entityIdCapture);
+//                        objectsToUpdate.add(result);
+//                    }
+//                    Stream<PersistentResource> objects = objectsToUpdate.stream()
+//                            .filter(p -> (entityIdCapture == null) ? true : p.matchesId(entityIdCapture));
+//                    if (dictionary.isAttribute(entityClass, fieldName)) {
+//                        // Update attribute value
+//                        objects.forEach(o -> o.updateAttribute(fieldName, value));
+//                    } else if (dictionary.isRelation(entityClass, fieldName)) {
+//                        // Replace relationship
+//                        String relName = dictionary.getJsonAliasFor(
+//                                dictionary.getParameterizedType(entityClass, fieldName));
+//                        Set<PersistentResource> newRelationships = new HashSet<>();
+//                        if (value != null) {
+//                            // TODO: For a to-many relationship this would be a list... Need to handle that case
+//                            newRelationships.add(PersistentResourceFetcher
+//                                    .load(relName, value.toString(), requestScope));
+//                        }
+//                        objects.forEach(o -> o.updateRelation(fieldName, newRelationships));
+//                    } else if (fieldName.equals(dictionary.getIdFieldName(entityClass))) {
+//                        if (id == null) {
+//                            // TODO: In case of list, should ensure we're modifying the correct object instance
+//                            return; // Not updating id
+//                        }
+//                        // Set id value
+//                        if (value == null) {
+//                            throw new WebApplicationException("Cannot set object identifier to null",
+//                                    HttpStatus.SC_BAD_REQUEST);
+//                        }
+//                        objects.forEach(o -> o.setId(value.toString()));
+//                    } else {
+//                        throw new WebApplicationException("Attempt to update unknown field: '"
+//                                + fieldName + "'", HttpStatus.SC_BAD_REQUEST);
+//                    }
+//                });
     }
 
     /**
@@ -183,34 +183,36 @@ public class UpdateOperation {
     }
 
     private Collection<PersistentResource> fetchNonRootableResourceCollection() {
-        // NOTE: Currently only handles _single_ object update
-        Optional<String> dataId = (id != null) ? Optional.of(id) : field.getArguments().stream()
-                .filter(arg -> ARGUMENT_DATA.equalsIgnoreCase(arg.getName()))
-                .findFirst()
-                .map(data -> {
-                    // TODO: Handle lists?
-                    if (data.getValue() instanceof ObjectValue) {
-                        ObjectValue object = (ObjectValue) data.getValue();
-                        return object.getObjectFields().stream()
-                                .filter(f -> "id".equalsIgnoreCase(f.getName()))
-                                .findFirst()
-                                .map(f -> ((StringValue) f.getValue()).getValue())
-                                .orElseGet(() -> {
-                                    String uuid = UUID.randomUUID().toString();
-                                    PersistentResource.createObject(resource, entityClass, requestScope, uuid);
-                                    return uuid;
-                                });
-                    }
-                    return null;
-                });
-        return dataId
-                .map(dId -> Collections.singleton(resource.getRelation(field.getName(), dId)))
-                .orElseGet(() -> resource.getRelationCheckedFiltered(field.getName()));
+//        // NOTE: Currently only handles _single_ object update
+//        Optional<String> dataId = (id != null) ? Optional.of(id) : field.getArguments().stream()
+//                .filter(arg -> ARGUMENT_DATA.equalsIgnoreCase(arg.getName()))
+//                .findFirst()
+//                .map(data -> {
+//                    // TODO: Handle lists?
+//                    if (data.getValue() instanceof ObjectValue) {
+//                        ObjectValue object = (ObjectValue) data.getValue();
+//                        return object.getObjectFields().stream()
+//                                .filter(f -> "id".equalsIgnoreCase(f.getName()))
+//                                .findFirst()
+//                                .map(f -> ((StringValue) f.getValue()).getValue())
+//                                .orElseGet(() -> {
+//                                    String uuid = UUID.randomUUID().toString();
+//                                    PersistentResource.createObject(resource, entityClass, requestScope, uuid);
+//                                    return uuid;
+//                                });
+//                    }
+//                    return null;
+//                });
+//        return dataId
+//                .map(dId -> Collections.singleton(resource.getRelation(field.getName(), dId)))
+//                .orElseGet(() -> resource.getRelationCheckedFiltered(field.getName()));
+        return new ArrayList<>(fetchNonRootableResourceCollection()); //TODO: placeholder, remove this
     }
 
     private Collection<PersistentResource> fetchRootableResourceCollection() {
-        return (id != null)
-                ? Collections.singleton(PersistentResourceFetcher.load(field.getName(), id, requestScope))
-                : PersistentResourceFetcher.loadCollectionOf(field.getName(), requestScope);
+//        return (id != null)
+//                ? Collections.singleton(PersistentResourceFetcher.load(field.getName(), id, requestScope))
+//                : PersistentResourceFetcher.loadCollectionOf(field.getName(), requestScope);
+        return new ArrayList<>(fetchNonRootableResourceCollection()); //TODO: placeholder, remove this
     }
 }

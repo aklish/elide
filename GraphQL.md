@@ -44,8 +44,9 @@ Finally, the `exposedFields` is a specified list of values for the object(s) tha
 Below are several examples. For each, assume a simple model of `Book`, `Author` and `Publisher`. Particularly, the schema for each can be considered:
 
 ```java
-@Include(rootLevel = true)
 @Entity
+@Table(name = "book")
+@Include(rootLevel = true)
 public class Book {
     @Id public long id;
     public String title;
@@ -53,8 +54,9 @@ public class Book {
 }
 ```
 ```java
-@Include(rootLevel = false)
 @Entity
+@Table(name = "author")
+@Include(rootLevel = false)
 public class Author {
     @Id public long id;
     public String name;
@@ -63,8 +65,9 @@ public class Author {
 }
 ```
 ```java
-@Include(rootLevel = false)
 @Entity
+@Table(name = "publisher")
+@Include(rootLevel = false)
 public class Publisher {
     @Id public long id;
     public String name;
@@ -216,6 +219,10 @@ Below is a chart of expected behavior from GraphQL queries:
 |           | True         | False      | Update on persisted object with specified id |
 |           | False        | True       | Create new object (referenced by id in body within request) |
 |           | False        | False      | Create new object |
+| Fetch     | True         | True       | Boom. |
+|           | True         | False      | Find single id. |
+|           | False        | True       | Boom. |
+|           | False        | False      | Find all. |
 | Replace   | True         | True       | Overwrite all specified values in body (including id) |
 |           | True         | False      | Overwrite all specified values (no id in body to overwrite) |
 |           | False        | True       | Remove from collection except if id exists, it won't be created |

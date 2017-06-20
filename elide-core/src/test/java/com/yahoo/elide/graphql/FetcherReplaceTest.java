@@ -51,6 +51,33 @@ public class FetcherReplaceTest extends AbstractPersistentResourceFetcherTest {
         assertQueryEquals(graphQLRequest, expectedResponse);
     }
 
+    /** DELETE THIS
+     * mutation {
+     *     book(op: REPLACE, data: [{id: 1, title: "my id"},
+     *                              {id: 42, title: "xyz"},
+     *                              {title: "abc"}]) {
+     *                                  id,
+     *                                  title
+     *                              }
+     * }
+     *
+     * {
+     *     "book": [{
+     *         "id": 1,
+     *         "title": "my id"
+     *     }, {
+     *         "id": 2,
+     *         "title": "Libro Dos"
+     *     }, {
+     *         "id": 0,
+     *         "title": "abc"
+     *     }, {
+     *         "id": 0,
+     *         "title": "xyz"
+     *     }]
+     * }
+     */
+
     @Test
     public void testRootCollectionNoIds() throws JsonProcessingException {
         String graphQLRequest = "mutation { book(op:REPLACE, data: [{title: \"abc\"}, {title: \"abc\"}, {title: \"abc\"}]) { id, title } }";

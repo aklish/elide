@@ -26,6 +26,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base functionality required to test the PersistentResourceFetcher.
@@ -34,21 +36,27 @@ public class AbstractPersistentResourceFetcherTest extends AbstractGraphQLTest {
     protected GraphQL api;
     protected RequestScope requestScope;
     protected ObjectMapper mapper = new ObjectMapper();
+    private static final Logger log = LoggerFactory.getLogger(GraphQL.class);
 
     @BeforeMethod
     public void setupFetcherTest() {
+        //we create elide instances and provide the dictionary containing our object model to map JSON API Entity beans to/from Entity type names.
         ElideSettings settings = new ElideSettingsBuilder(null)
                 .withEntityDictionary(dictionary).build();
 
+        //Author is the root object of our model, now we store our objects in an in memory database
         InMemoryDataStore store = new InMemoryDataStore(Author.class.getPackage());
         store.populateEntityDictionary(dictionary);
 
+        //at this step, we build the graphQL model from elide entities
         ModelBuilder builder = new ModelBuilder(dictionary, new PersistentResourceFetcher(settings));
+        //instantiate the graphQL object
         api = new GraphQL(builder.build());
 
         InMemoryTransaction tx = (InMemoryTransaction) store.beginTransaction();
         initTestData(tx);
 
+        //we create a requestScope here which is also the context for executing graphQL queries using graphQL-java
         requestScope = new RequestScope("/", null, tx, null, null,
                 settings);
     }
@@ -88,6 +96,7 @@ public class AbstractPersistentResourceFetcherTest extends AbstractGraphQLTest {
         ExecutionResult result = api.execute(graphQLRequest, requestScope);
         Assert.assertEquals(result.getErrors().size(), 0, "Errors [" + errorsToString(result.getErrors()) + "]:");
         try {
+            log.debug(mapper.writeValueAsString(result.getData()));
             Assert.assertEquals(mapper.writeValueAsString(result.getData()), expectedResponse);
         } catch (JsonProcessingException e) {
             Assert.fail("JSON parsing exception", e);
@@ -96,6 +105,10 @@ public class AbstractPersistentResourceFetcherTest extends AbstractGraphQLTest {
 
     void assertQueryFails(String graphQLRequest) {
         ExecutionResult result = api.execute(graphQLRequest, requestScope);
+
+        //debug for errors
+        log.debug("Errors = [" + errorsToString(result.getErrors()) + "]");
+
         Assert.assertNotEquals(result.getErrors().size(), 0);
     }
 

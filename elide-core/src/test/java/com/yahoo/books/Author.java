@@ -43,12 +43,34 @@ public class Author {
     private Pseudonym penName;
     private Collection<Book> books = new ArrayList<>();
 
-    @Getter @Setter
     private String name;
-    @Getter @Setter
     private AuthorType type;
-    @Getter @Setter
     private Address homeAddress;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public AuthorType getType() {
+        return type;
+    }
+
+    public void setType(AuthorType type) {
+        this.type = type;
+    }
+
+    public Address getHomeAddress() {
+        return homeAddress;
+    }
+
+    public void setHomeAddress(Address homeAddress) {
+        this.homeAddress = homeAddress;
+    }
+
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long getId() {

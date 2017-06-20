@@ -24,9 +24,10 @@ import static com.yahoo.elide.graphql.ModelBuilder.ARGUMENT_ID;
  */
 public class Environment {
     public static final List<Map<String, Object>> EMPTY_DATA = ImmutableList.of();
+    public static final List<Optional<String>> EMPTY_IDS = ImmutableList.of();
 
     public final RequestScope requestScope;
-    public final Optional<String> id;
+    public final List<Optional<String>> id;
     public final Object source;
     public final PersistentResource parentResource;
     public final GraphQLType parentType;
@@ -48,7 +49,11 @@ public class Environment {
         outputType = environment.getFieldType();
         field = environment.getFields().get(0);
 
-        id = Optional.ofNullable((String) args.get(ARGUMENT_ID));
+        List<Optional<String>> ids = (List) args.get(ARGUMENT_ID);
+
+        if(ids == null) this.id = EMPTY_IDS;
+        else this.id = ImmutableList.copyOf(ids);
+
         filters = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_FILTER));
 
         List<Map<String, Object>> data = (List<Map<String, Object>>) args.get(ModelBuilder.ARGUMENT_DATA);

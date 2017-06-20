@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
 public class FetcherFetchTest extends AbstractPersistentResourceFetcherTest {
     @Test
     public void testRootSingle() throws JsonProcessingException {
-        String graphQLRequest = "{ book(id: \"1\") { id title } }";
+        String graphQLRequest = "{ book(ids: [\"1\"]) { id title } }";
         String expectedResponse = "{\"book\":[{\"id\":\"1\",\"title\":\"Libro Uno\"}]}";
 
         assertQueryEquals(graphQLRequest, expectedResponse);
