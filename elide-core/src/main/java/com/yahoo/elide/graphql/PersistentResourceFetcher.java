@@ -52,10 +52,6 @@ public class PersistentResourceFetcher implements DataFetcher {
         //for example, id="123" or sort="ascending"
         Map<String, Object> args = environment.getArguments();
 
-        for(String s : args.keySet()) {
-            if(s.equals("ids")) System.out.println("KEY IS = " + args.get(s) + "");
-        }
-
         //we extract all the environment variables and dump in an 'Environment' object
         Environment context = new Environment(environment);
 
@@ -178,7 +174,7 @@ public class PersistentResourceFetcher implements DataFetcher {
     private Object fetchObject(Environment request) {
         if (!request.data.isEmpty()) {
             // make exceptions more specific, this would be BadRequestException
-            throw new WebApplicationException("FETCH must not include data.", HttpStatus.SC_BAD_REQUEST);
+            throw new BadRequestException("FETCH must not include data.");
         }
 
         Optional<FilterExpression> filters = Optional.empty();
@@ -187,7 +183,7 @@ public class PersistentResourceFetcher implements DataFetcher {
 
         RequestScope requestScope = request.requestScope;
         if (request.outputType instanceof GraphQLList) {
-            if (request.id.isPresent() && request.filters.isPresent()) {
+            if ((request.id != null || !request.id.isEmpty())  && request.filters.isPresent()) {
                 throw new WebApplicationException("You may not filter when loading by id");
             }
 
@@ -199,9 +195,17 @@ public class PersistentResourceFetcher implements DataFetcher {
                 throw new UnknownEntityException(entityType);
             }
 
-            return request.id
-                    .<Set>map((id) -> Sets.newHashSet(PersistentResource.loadRecord(recordType, id, requestScope)))
-                    .orElse(PersistentResource.loadRecords(recordType, requestScope));
+            /* list of records accessed from internal db and returned */
+            HashSet recordSet = new HashSet();
+            if(!request.id.isEmpty())
+            for(Object id : request.id) {
+                if(id != null) recordSet.add(PersistentResource.loadRecord(recordType, (String)id, requestScope));
+                else return PersistentResource.loadRecords(recordType, requestScope);
+            }
+            /* No 'ids' field is specified, return all the records with given root object */
+            else return PersistentResource.loadRecords(recordType, requestScope);
+            return recordSet;
+
         } else if (request.outputType instanceof GraphQLObjectType) {
             if (request.parentResource == null) {
                 throw new IllegalStateException("Do we have a singleton root object?");
