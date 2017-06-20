@@ -17,24 +17,74 @@ import org.testng.annotations.Test;
 public class FetcherFetchTest extends AbstractPersistentResourceFetcherTest {
     @Test
     public void testRootSingle() throws JsonProcessingException {
-        String graphQLRequest = "{ book(ids: [\"1\"]) { id title } }";
-        String expectedResponse = "{\"book\":[{\"id\":\"1\",\"title\":\"Libro Uno\"}]}";
+        String graphQLRequest =
+                "{ " +
+                    "book(ids: [\"1\"]) { " +
+                        "id " +
+                        "title " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"id\":\"1\"," +
+                        "\"title\":\"Libro Uno\"" +
+                    "}]" +
+                "}";
 
         assertQueryEquals(graphQLRequest, expectedResponse);
     }
 
     @Test
     public void testRootMultipleIds() throws JsonProcessingException {
-        String graphQLRequest = "{ book(ids: [\"1\", \"2\"]) { id title } }";
-        String expectedResponse = "{\"book\":[{\"id\":\"1\",\"title\":\"Libro Uno\"},{\"id\":\"2\",\"title\":\"Libro Dos\"}]}";
+        String graphQLRequest =
+                "{ " +
+                    "book(ids: [\"1\", \"2\"]) { " +
+                        "id " +
+                        "title " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"id\":\"1\"," +
+                        "\"title\":\"Libro Uno\"" +
+                    "}," +
+                    "{" +
+                        "\"id\":\"2\"," +
+                        "\"title\":\"Libro Dos\"" +
+                    "}]" +
+                "}";
 
         assertQueryEquals(graphQLRequest, expectedResponse);
     }
 
     @Test
     public void testRootCollection() throws JsonProcessingException {
-        String graphQLRequest = "{ book { id title genre language } }";
-        String expectedResponse = "{\"book\":[{\"id\":\"1\",\"title\":\"Libro Uno\",\"genre\":null,\"language\":null},{\"id\":\"2\",\"title\":\"Libro Dos\",\"genre\":null,\"language\":null}]}";
+        String graphQLRequest =
+                "{ " +
+                    "book { " +
+                        "id " +
+                        "title " +
+                        "genre " +
+                        "language " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"id\":\"1\"," +
+                        "\"title\":\"Libro Uno\"," +
+                        "\"genre\":null," +
+                        "\"language\":null" +
+                    "}," +
+                    "{" +
+                        "\"id\":\"2\"," +
+                        "\"title\":\"Libro Dos\"," +
+                        "\"genre\":null," +
+                        "\"language\":null" +
+                    "}]" +
+                "}";
 
         assertQueryEquals(graphQLRequest, expectedResponse);
     }
@@ -69,16 +119,51 @@ public class FetcherFetchTest extends AbstractPersistentResourceFetcherTest {
 
     @Test
     public void testNestedSingle() throws JsonProcessingException {
-        String graphQLRequest = "{ author(ids: [\"1\"]) { name penName { name } } }";
-        String expectedResponse = "{\"author\":[{\"name\":\"Mark Twain\",\"penName\":{\"name\":\"The People's Author\"}}]}";
+        String graphQLRequest =
+                "{ " +
+                    "author(ids: [\"1\"]) { " +
+                        "name " +
+                        "penName { " +
+                            "name " +
+                        "} " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"author\":[{" +
+                        "\"name\":\"Mark Twain\"," +
+                        "\"penName\":{" +
+                            "\"name\":\"The People's Author\"" +
+                        "}" +
+                    "}]" +
+                "}";
 
         assertQueryEquals(graphQLRequest, expectedResponse);
     }
 
     @Test
     public void testNestedCollection() throws JsonProcessingException {
-        String graphQLRequest = "{ author(ids: [\"1\"]) { books { id title } } }";
-        String expectedResponse = "{\"author\":[{\"books\":[{\"id\":\"1\",\"title\":\"Libro Uno\"},{\"id\":\"2\",\"title\":\"Libro Dos\"}]}]}";
+        String graphQLRequest =
+                "{ " +
+                    "author(ids: [\"1\"]) { " +
+                        "books { " +
+                            "id " +
+                            "title " +
+                        "} " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"author\":[{" +
+                        "\"books\":[{" +
+                            "\"id\":\"1\"," +
+                            "\"title\":\"Libro Uno\"" +
+                        "},{" +
+                            "\"id\":\"2\"," +
+                            "\"title\":\"Libro Dos\"" +
+                        "}]" +
+                    "}]" +
+                "}";
 
         assertQueryEquals(graphQLRequest, expectedResponse);
     }
