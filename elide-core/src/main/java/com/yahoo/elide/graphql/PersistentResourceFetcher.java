@@ -5,6 +5,7 @@
  */
 package com.yahoo.elide.graphql;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.collect.Sets;
 import com.yahoo.elide.ElideSettings;
 import com.yahoo.elide.core.DataStoreTransaction;
