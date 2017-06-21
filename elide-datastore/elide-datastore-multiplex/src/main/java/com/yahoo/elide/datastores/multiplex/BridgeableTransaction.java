@@ -68,7 +68,7 @@ public interface BridgeableTransaction {
      * @param parent  Parent object
      * @param relationName  Relation name on parent to expected entity
      * @param filterExpression  Filter expression to apply to query
-     * @param sorting  Sorting method for collection
+     * @param sorting  Sort method for collection
      * @param pagination  Pagination for collection
      * @param scope  Request scope
      * @return Loaded iterable of objects from bridgeable store.

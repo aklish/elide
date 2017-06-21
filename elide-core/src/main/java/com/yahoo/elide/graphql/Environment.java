@@ -33,6 +33,7 @@ public class Environment {
     public final GraphQLType parentType;
     public final GraphQLType outputType;
     public final Field field;
+    public final Optional<String> sort;
     public final List<Map<String, Object>> data;
     public final Optional<String> filters;
 
@@ -48,13 +49,13 @@ public class Environment {
         parentType = environment.getParentType();
         outputType = environment.getFieldType();
         field = environment.getFields().get(0);
-
         List ids = (List) args.get(ARGUMENT_ID);
 
         if(ids == null) this.id = EMPTY_IDS;
         else this.id = ImmutableList.copyOf(ids);
 
         filters = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_FILTER));
+        sort = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_SORT));
 
         List<Map<String, Object>> data = (List<Map<String, Object>>) args.get(ModelBuilder.ARGUMENT_DATA);
         if (data == null) {

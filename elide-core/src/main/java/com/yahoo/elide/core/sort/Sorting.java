@@ -30,7 +30,7 @@ public class Sorting {
     private static final String JSONAPI_ID_KEYWORD = "id";
 
     /**
-     * Constructs a new Sorting instance.
+     * Constructs a new Sort instance.
      * @param sortingRules The map of sorting rules
      */
     public Sorting(final Map<String, SortOrder> sortingRules) {
@@ -95,7 +95,7 @@ public class Sorting {
     /**
      * Given the query params on the GET request, collect possible sorting rules.
      * @param queryParams The query params on the request.
-     * @return The Sorting instance (default or specific).
+     * @return The Sort instance (default or specific).
      */
     public static Sorting parseQueryParams(final MultivaluedMap<String, String> queryParams) {
         final Map<String, SortOrder> sortingRules = new LinkedHashMap<>();

@@ -18,11 +18,11 @@ public class FetcherFetchTest extends AbstractPersistentResourceFetcherTest {
     @Test
     public void testRootSingle() throws JsonProcessingException {
         String graphQLRequest =
-                "{ " +
+                "{" +
                     "book(ids: [\"1\"]) { " +
                         "id " +
                         "title " +
-                    "} " +
+                    "}" +
                 "}";
         String expectedResponse =
                 "{" +
@@ -99,10 +99,11 @@ public class FetcherFetchTest extends AbstractPersistentResourceFetcherTest {
 
     @Test
     public void testRootCollectionSort() throws JsonProcessingException {
-        String graphQLRequest = "{ book(sort: \"-title\") { id title } }";
+        String graphQLRequest = "{ book(sort: \"+title\") { id title } }";
         String expectedResponse = "{\"book\":[{\"id\":\"1\",\"title\":\"Libro Uno\"}]}";
 
-        Assert.fail("Not implemented");
+//        Assert.fail("Not implemented");
+        assertQueryEquals(graphQLRequest, expectedResponse);
     }
 
     @Test

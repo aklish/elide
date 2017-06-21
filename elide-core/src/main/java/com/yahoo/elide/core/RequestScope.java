@@ -81,6 +81,8 @@ public class RequestScope implements com.yahoo.elide.security.RequestScope {
 
     final private transient HashMap<Class, LinkedHashSet<Runnable>> queuedTriggers;
 
+
+
     /**
      * Create a new RequestScope with specified update status code.
      *

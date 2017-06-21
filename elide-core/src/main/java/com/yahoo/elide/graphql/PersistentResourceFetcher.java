@@ -5,12 +5,9 @@
  */
 package com.yahoo.elide.graphql;
 
-import com.google.common.base.CharMatcher;
-import com.google.common.collect.Sets;
 import com.yahoo.elide.ElideSettings;
 import com.yahoo.elide.core.DataStoreTransaction;
 import com.yahoo.elide.core.EntityDictionary;
-import com.yahoo.elide.core.HttpStatus;
 import com.yahoo.elide.core.PersistentResource;
 import com.yahoo.elide.core.RequestScope;
 import com.yahoo.elide.core.exceptions.InvalidAttributeException;
@@ -19,7 +16,7 @@ import com.yahoo.elide.core.filter.expression.FilterExpression;
 import com.yahoo.elide.core.pagination.Pagination;
 import com.yahoo.elide.core.sort.Sorting;
 import com.yahoo.elide.graphql.operations.UpdateOperation;
-import graphql.language.Argument;
+import com.yahoo.elide.graphql.sort.Sort;
 import graphql.language.Field;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
@@ -35,7 +32,6 @@ import javax.ws.rs.WebApplicationException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.yahoo.elide.graphql.ModelBuilder.ARGUMENT_DATA;
 import static com.yahoo.elide.graphql.ModelBuilder.ARGUMENT_OPERATION;
 
 /**
@@ -184,8 +180,13 @@ public class PersistentResourceFetcher implements DataFetcher {
 
         RequestScope requestScope = request.requestScope;
         if (request.outputType instanceof GraphQLList) {
-            if ((request.id != null || !request.id.isEmpty())  && request.filters.isPresent()) {
-                throw new WebApplicationException("You may not filter when loading by id");
+            if ((request.id != null && !request.id.isEmpty())){
+                if (request.filters.isPresent()) {
+                    throw new WebApplicationException("You may not filter when loading by id");
+                }
+                if(request.sort.isPresent()) {
+                    throw new WebApplicationException("You may not sort when loading by id");
+                }
             }
 
             GraphQLObjectType graphQLType = (GraphQLObjectType) ((GraphQLList) request.outputType).getWrappedType();
@@ -201,10 +202,21 @@ public class PersistentResourceFetcher implements DataFetcher {
             if(!request.id.isEmpty())
             for(Object id : request.id) {
                 if(id != null) recordSet.add(PersistentResource.loadRecord(recordType, (String)id, requestScope));
-                else return PersistentResource.loadRecords(recordType, requestScope);
             }
             /* No 'ids' field is specified, return all the records with given root object */
-            else return PersistentResource.loadRecords(recordType, requestScope);
+            else {
+                 Set records = PersistentResource.loadRecords(recordType, requestScope);
+
+                 /* handle sorting */
+                 if(request.sort.isPresent()) {
+                     String sortArg = request.sort.get();
+                     Sort sortInstance = new Sort(sortArg);
+                     return sortInstance.sort(records, requestScope);
+                 }
+
+                 return records;
+
+            }
             return recordSet;
 
         } else if (request.outputType instanceof GraphQLObjectType) {
