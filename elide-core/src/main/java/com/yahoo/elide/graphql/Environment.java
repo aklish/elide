@@ -6,6 +6,7 @@
 package com.yahoo.elide.graphql;
 
 import com.google.common.collect.ImmutableList;
+import com.sun.org.apache.xpath.internal.operations.Mod;
 import com.yahoo.elide.core.PersistentResource;
 import com.yahoo.elide.core.RequestScope;
 import graphql.language.Field;
@@ -36,6 +37,8 @@ public class Environment {
     public final Optional<String> sort;
     public final List<Map<String, Object>> data;
     public final Optional<String> filters;
+    public final Optional<String> offset;
+    public final Optional<String> first;
 
     public Environment(DataFetchingEnvironment environment) {
         if (environment.getFields().size() != 1) {
@@ -56,6 +59,9 @@ public class Environment {
 
         filters = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_FILTER));
         sort = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_SORT));
+
+        first = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_FIRST));
+        offset = Optional.ofNullable((String) args.get(ModelBuilder.ARGUMENT_OFFSET));
 
         List<Map<String, Object>> data = (List<Map<String, Object>>) args.get(ModelBuilder.ARGUMENT_DATA);
         if (data == null) {

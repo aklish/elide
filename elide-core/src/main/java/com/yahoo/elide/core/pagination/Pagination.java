@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 /**
  * Encapsulates the pagination strategy.
  */
-
 @ToString
 public class Pagination {
     /**

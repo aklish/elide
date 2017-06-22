@@ -207,15 +207,39 @@ public class PersistentResourceFetcher implements DataFetcher {
             else {
                  Set records = PersistentResource.loadRecords(recordType, requestScope);
 
-                 /* handle sorting */
-                 if(request.sort.isPresent()) {
-                     String sortArg = request.sort.get();
-                     Sort sortInstance = new Sort(sortArg);
-                     return sortInstance.sort(records, requestScope);
-                 }
+                /* handle sorting */
+                if(request.sort.isPresent()) {
+                    String sortArg = request.sort.get();
+                    Sort sortInstance = new Sort(sortArg);
+                    return sortInstance.sort(records, requestScope);
+                }
 
-                 return records;
+                 /* handle pagination */
+                if(request.first.isPresent()) {
+                    int first, offset, start, end;
+                    try{
+                        first = Integer.parseInt(request.first.get());
+                    } catch (NumberFormatException e) {
+                        return e;
+                    }
+                    if(!request.offset.isPresent()) {
+                        start = 0;
+                        end = first;
 
+                    } else {
+                        try {
+                            offset = Integer.parseInt(request.offset.get());
+                        } catch (NumberFormatException e) {
+                            return e;
+                        }
+                        start = first;
+                        end = offset + first;
+                    }
+                    List<PersistentResource> paginatedList = new ArrayList<>(records);
+                    return paginatedList.subList(start, end);
+                }
+
+                return records;
             }
             return recordSet;
 

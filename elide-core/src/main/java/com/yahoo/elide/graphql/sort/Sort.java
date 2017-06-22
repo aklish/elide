@@ -9,6 +9,7 @@ package com.yahoo.elide.graphql.sort;
 import com.yahoo.elide.core.PersistentResource;
 import com.yahoo.elide.core.RequestScope;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -49,9 +50,12 @@ public class Sort {
         ArrayList<PersistentResource> sortedList = new ArrayList(records);
 
         sortedList.sort((o1, o2) -> {
-            String s1 = (String) PersistentResource.getValue(o1.getObject(), sortRule, requestScope);
-            String s2 = (String) PersistentResource.getValue(o2.getObject(), sortRule, requestScope);
-            return this.order ? s2.compareTo(s1) : s1.compareTo(s2);
+            Object val1 = PersistentResource.getValue(o1.getObject(), sortRule, requestScope);
+            Object val2 = PersistentResource.getValue(o2.getObject(), sortRule, requestScope);
+            if(val1 instanceof String && val2 instanceof String)
+                return this.order ? val2.toString().compareTo(val1.toString()) : val1.toString().compareTo(val2.toString());
+            else /* we only allow String and Integer field definitions (See ModelBuilder) */
+                return this.order ? (Integer) val1 - (Integer) val2 : (Integer) val2 - (Integer) val1;
         });
 
         return sortedList;
