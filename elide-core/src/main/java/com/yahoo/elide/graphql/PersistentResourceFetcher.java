@@ -61,7 +61,7 @@ public class PersistentResourceFetcher implements DataFetcher {
 
             case UPSERT:
                 /* handle both fetch and add, if no data provided, route to fetch */
-                if(context.data.isEmpty()) return fetchObject(context);
+                if(context.data.isEmpty() && !context.id.isEmpty()) return fetchObject(context);
                 return createObject(context);
 
             case DELETE:
