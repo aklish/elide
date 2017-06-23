@@ -45,14 +45,10 @@ public class PersistentResourceFetcher implements DataFetcher {
 
     @Override
     public Object get(DataFetchingEnvironment environment) {
-        //args will contain a mapping from all the arguments we provide to the entries that it contains
-        //for example, id="123" or sort="ascending"
         Map<String, Object> args = environment.getArguments();
 
-        //we extract all the environment variables and dump in an 'Environment' object
         Environment context = new Environment(environment);
 
-        //grab the current operation requested in user query or defaults to FETCH if no op argument is present
         RelationshipOp operation = (RelationshipOp) args.getOrDefault(ARGUMENT_OPERATION, RelationshipOp.FETCH);
 
         if (log.isDebugEnabled()) {
@@ -64,6 +60,8 @@ public class PersistentResourceFetcher implements DataFetcher {
                 return fetchObject(context);
 
             case UPSERT:
+                /* handle both fetch and add, if no data provided, route to fetch */
+                if(context.data.isEmpty()) return fetchObject(context);
                 return createObject(context);
 
             case DELETE:
@@ -135,42 +133,75 @@ public class PersistentResourceFetcher implements DataFetcher {
     }
 
     private Object createObject(Environment request) {
-//        EntityDictionary dictionary = request.requestScope.getDictionary();
-//
-//        GraphQLObjectType objectType;
-////         String uuid = UUID.randomUUID().toString();
-//        String uuid = request.id.map(String::toString).orElse(""); //verify
-//
-//        if (request.outputType instanceof GraphQLObjectType) {
-//            // No parent
-//            // TODO: These UUID's should not be random. They should be whatever id's are specified by the user so they
-//            // can be referenced throughout the document
-//            objectType = (GraphQLObjectType) request.outputType;
-//            return PersistentResource.createObject(null, dictionary.getEntityClass(objectType.getName()),
-//                    request.requestScope, uuid);
-//        } else if (request.outputType instanceof GraphQLList) {
-//            // Has parent
-//            objectType = (GraphQLObjectType) ((GraphQLList) request.outputType).getWrappedType();
-//            List<PersistentResource> container = new ArrayList<>();
-//            for (Map<String, Object> input : request.data) {
-//                Class<?> entityClass = dictionary.getEntityClass(objectType.getName());
-//                // TODO: See above comment about UUID's.
-//                PersistentResource toCreate = PersistentResource.createObject(null, entityClass, request.requestScope,
-//                        uuid);
-//                input.entrySet().stream()
-//                        .filter(entry -> dictionary.isAttribute(entityClass, entry.getKey()))
-//                        .forEach(entry -> toCreate.updateAttribute(entry.getKey(), entry.getValue()));
-//                container.add(toCreate);
-//            }
-//            return container;
-//        }
-//        throw new IllegalStateException("Not sure what to create " + request.outputType.getName());
-        return new HashSet<>(); //TODO: placeholder, remove this
+        if (!request.id.isEmpty()) {
+            throw new BadRequestException("New entry cannot be added with id field provided.");
+        }
+
+        EntityDictionary dictionary = request.requestScope.getDictionary();
+
+        GraphQLObjectType objectType;
+        String uuid;
+
+        if(!request.id.isEmpty() && request.id.get(0).isPresent()) uuid = request.id.get(0).get();
+        else uuid = UUID.randomUUID().toString();
+
+        if (request.outputType instanceof GraphQLObjectType) {
+            // No parent
+            // TODO: These UUID's should not be random. They should be whatever id's are specified by the user so they
+            // can be referenced throughout the document
+            //TODO: Ask if the above TODO can be ignored. The User is probably not allowed
+            // to provide an id while creating a new object entry. However, we're fetching the id if the list has only
+            //one entry
+            objectType = (GraphQLObjectType) request.outputType;
+
+            PersistentResource createdObject =  PersistentResource.createObject(null, dictionary.getEntityClass(objectType.getName()),
+                    request.requestScope, uuid);
+
+            //if user has specified 'first' argument and it's 0, we don't return the newly created object
+            if(request.first.isPresent() && request.first.get().equals("0")) return null;
+
+            //else we do
+            return createdObject;
+        } else if (request.outputType instanceof GraphQLList) {
+            // Has parent
+            //set uuid to parent's 'id'
+            if(request.parentResource != null)
+                uuid = String.valueOf(PersistentResource.getValue(request.parentResource.getObject(), "id",
+                    request.requestScope));
+            objectType = (GraphQLObjectType) ((GraphQLList) request.outputType).getWrappedType();
+            List<PersistentResource> container = new ArrayList<>();
+            for (Map<String, Object> input : request.data) {
+                Class<?> entityClass = dictionary.getEntityClass(objectType.getName());
+                // TODO: See above comment about UUID's.
+                // TODO: QUESTION: Isn't this UUID the object's UUID and not it's parent's? However, we've set it to parent's
+                PersistentResource toCreate = PersistentResource.createObject(null, entityClass, request.requestScope,
+                        uuid);
+                input.entrySet().stream()
+                        .filter(entry -> dictionary.isAttribute(entityClass, entry.getKey()))
+                        .forEach(entry -> toCreate.updateAttribute(entry.getKey(), entry.getValue()));
+                container.add(toCreate);
+            }
+
+            /* handle sorting */
+            if(request.sort.isPresent()) {
+                String sortArg = request.sort.get();
+                Sort sortInstance = new Sort(sortArg);
+                //TODO: we return the sorted instance here, this won't allow sorting and paginating together
+                return sortInstance.sort(container, request.requestScope);
+            }
+
+            /* handle pagination */
+            if(request.first.isPresent()) {
+                return paginate(container, request);
+            }
+
+            return container;
+        }
+        throw new IllegalStateException("Not sure what to create " + request.outputType.getName());
     }
 
     private Object fetchObject(Environment request) {
         if (!request.data.isEmpty()) {
-            // make exceptions more specific, this would be BadRequestException
             throw new BadRequestException("FETCH must not include data.");
         }
 
@@ -197,7 +228,7 @@ public class PersistentResourceFetcher implements DataFetcher {
                 throw new UnknownEntityException(entityType);
             }
 
-            /* list of records accessed from internal db and returned */
+            /* access records from internal db and return */
             HashSet recordSet = new HashSet();
             if(!request.id.isEmpty())
             for(Object id : request.id) {
@@ -205,40 +236,22 @@ public class PersistentResourceFetcher implements DataFetcher {
             }
             /* No 'ids' field is specified, return all the records with given root object */
             else {
-                 Set records = PersistentResource.loadRecords(recordType, requestScope);
+                Set records = PersistentResource.loadRecords(recordType, requestScope);
 
                 /* handle sorting */
                 if(request.sort.isPresent()) {
                     String sortArg = request.sort.get();
                     Sort sortInstance = new Sort(sortArg);
-                    return sortInstance.sort(records, requestScope);
+                    //TODO: we return the sorted instance here, this won't allow sorting and paginating together
+                    return sortInstance.sort(new ArrayList<PersistentResource>(records), requestScope);
                 }
 
-                 /* handle pagination */
+                /* handle pagination */
                 if(request.first.isPresent()) {
-                    int first, offset, start, end;
-                    try{
-                        first = Integer.parseInt(request.first.get());
-                    } catch (NumberFormatException e) {
-                        return e;
-                    }
-                    if(!request.offset.isPresent()) {
-                        start = 0;
-                        end = first;
-
-                    } else {
-                        try {
-                            offset = Integer.parseInt(request.offset.get());
-                        } catch (NumberFormatException e) {
-                            return e;
-                        }
-                        start = first;
-                        end = offset + first;
-                    }
-                    List<PersistentResource> paginatedList = new ArrayList<>(records);
-                    return paginatedList.subList(start, end);
+                    return paginate(new ArrayList<PersistentResource>(records), request);
                 }
 
+                //TODO: Handle filtering
                 return records;
             }
             return recordSet;
@@ -263,6 +276,34 @@ public class PersistentResourceFetcher implements DataFetcher {
         }
 
         throw new IllegalStateException("WTF is a " + request.outputType.getClass().getName() + " mate?");
+    }
+
+    /**
+     * paginate list in-memory
+     * @param records A list of records to paginate
+     * @param request Environment instance containing pagination parameters
+     * @return paginated list
+     */
+    private static Object paginate(List<PersistentResource> records, Environment request) {
+        int first, offset, start, end;
+        try{
+            first = Integer.parseInt(request.first.get());
+        } catch (NumberFormatException e) {
+            throw new NumberFormatException("Please enter a valid integer as an argument to 'first'");
+        }
+        if(!request.offset.isPresent()) {
+            start = 0;
+            end = first;
+        } else {
+            try {
+                offset = Integer.parseInt(request.offset.get());
+            } catch (NumberFormatException e) {
+                throw new NumberFormatException("Please enter a valid integer as an argument to 'offset'");
+            }
+            start = first;
+            end = offset + first;
+        }
+        return records.subList(start, end);
     }
 
     protected Object fetchProperty(Environment request) {

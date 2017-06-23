@@ -37,7 +37,7 @@ public class Sort {
             return sortArg.substring(1);
         }
         throw new IllegalArgumentException("Please check your sorting argument, allowed arguments are '+' and '-' corresponding" +
-                " to ascending or descending");
+                " to descending or ascending");
     }
 
     /**
@@ -45,11 +45,10 @@ public class Sort {
      * @param requestScope Request Scope object
      * @return Sorted list based on sortArg and order
      */
-    public List<PersistentResource> sort(Set<PersistentResource> records, RequestScope requestScope) {
+    public List<PersistentResource> sort(List<PersistentResource> records, RequestScope requestScope) {
         String sortRule = parseSortRule();
-        ArrayList<PersistentResource> sortedList = new ArrayList(records);
 
-        sortedList.sort((o1, o2) -> {
+        records.sort((o1, o2) -> {
             Object val1 = PersistentResource.getValue(o1.getObject(), sortRule, requestScope);
             Object val2 = PersistentResource.getValue(o2.getObject(), sortRule, requestScope);
             if(val1 instanceof String && val2 instanceof String)
@@ -58,6 +57,6 @@ public class Sort {
                 return this.order ? (Integer) val1 - (Integer) val2 : (Integer) val2 - (Integer) val1;
         });
 
-        return sortedList;
+        return records;
     }
 }

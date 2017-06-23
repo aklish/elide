@@ -28,7 +28,7 @@ public class Environment {
     public static final List EMPTY_IDS = ImmutableList.of();
 
     public final RequestScope requestScope;
-    public final List id;
+    public final List<Optional<String>> id;
     public final Object source;
     public final PersistentResource parentResource;
     public final GraphQLType parentType;

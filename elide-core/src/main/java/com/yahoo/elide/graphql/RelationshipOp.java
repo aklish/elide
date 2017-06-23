@@ -10,10 +10,6 @@ package com.yahoo.elide.graphql;
  * Specifies how a relationship should be modified.
  */
 public enum RelationshipOp {
-//    FETCH,
-//    DELETE,
-//    ADD,
-//    REPLACE;
     FETCH,
     DELETE,
     UPSERT,

@@ -40,23 +40,18 @@ public class AbstractPersistentResourceFetcherTest extends AbstractGraphQLTest {
 
     @BeforeMethod
     public void setupFetcherTest() {
-        //we create elide instances and provide the dictionary containing our object model to map JSON API Entity beans to/from Entity type names.
         ElideSettings settings = new ElideSettingsBuilder(null)
                 .withEntityDictionary(dictionary).build();
 
-        //Author is the root object of our model, now we store our objects in an in memory database
         InMemoryDataStore store = new InMemoryDataStore(Author.class.getPackage());
         store.populateEntityDictionary(dictionary);
 
-        //at this step, we build the graphQL model from elide entities
         ModelBuilder builder = new ModelBuilder(dictionary, new PersistentResourceFetcher(settings));
-        //instantiate the graphQL object
         api = new GraphQL(builder.build());
 
         InMemoryTransaction tx = (InMemoryTransaction) store.beginTransaction();
         initTestData(tx);
 
-        //we create a requestScope here which is also the context for executing graphQL queries using graphQL-java
         requestScope = new RequestScope("/", null, tx, null, null,
                 settings);
     }
