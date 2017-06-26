@@ -45,7 +45,7 @@ public class Sort {
      * @param requestScope Request Scope object
      * @return Sorted list based on sortArg and order
      */
-    public List<PersistentResource> sort(List<PersistentResource> records, RequestScope requestScope) {
+    public void sort(List<PersistentResource> records, RequestScope requestScope) {
         String sortRule = parseSortRule();
 
         records.sort((o1, o2) -> {
@@ -56,7 +56,5 @@ public class Sort {
             else /* we only allow String and Integer field definitions (See ModelBuilder) */
                 return this.order ? (Integer) val1 - (Integer) val2 : (Integer) val2 - (Integer) val1;
         });
-
-        return records;
     }
 }

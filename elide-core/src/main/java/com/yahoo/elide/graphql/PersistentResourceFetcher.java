@@ -60,8 +60,6 @@ public class PersistentResourceFetcher implements DataFetcher {
                 return fetchObject(context);
 
             case UPSERT:
-                /* handle both fetch and add, if no data provided, route to fetch */
-                if(context.data.isEmpty() && !context.id.isEmpty()) return fetchObject(context);
                 return createObject(context);
 
             case DELETE:
@@ -151,7 +149,7 @@ public class PersistentResourceFetcher implements DataFetcher {
             // can be referenced throughout the document
             //TODO: Ask if the above TODO can be ignored. The User is probably not allowed
             // to provide an id while creating a new object entry. However, we're fetching the id if the list has only
-            //one entry
+            // one entry
             objectType = (GraphQLObjectType) request.outputType;
 
             PersistentResource createdObject =  PersistentResource.createObject(null, dictionary.getEntityClass(objectType.getName()),
@@ -186,15 +184,15 @@ public class PersistentResourceFetcher implements DataFetcher {
             if(request.sort.isPresent()) {
                 String sortArg = request.sort.get();
                 Sort sortInstance = new Sort(sortArg);
-                //TODO: we return the sorted instance here, this won't allow sorting and paginating together
-                return sortInstance.sort(container, request.requestScope);
+                sortInstance.sort(container, request.requestScope);
             }
 
             /* handle pagination */
             if(request.first.isPresent()) {
-                return paginate(container, request);
+                container = (List)paginate(container, request);
             }
 
+            //TODO: Some tests have offset and first argument, handle filtering in returned objects for those cases
             return container;
         }
         throw new IllegalStateException("Not sure what to create " + request.outputType.getName());
@@ -236,19 +234,18 @@ public class PersistentResourceFetcher implements DataFetcher {
             }
             /* No 'ids' field is specified, return all the records with given root object */
             else {
-                Set records = PersistentResource.loadRecords(recordType, requestScope);
+                List<PersistentResource> records = new ArrayList<>(PersistentResource.loadRecords(recordType, requestScope));
 
                 /* handle sorting */
                 if(request.sort.isPresent()) {
                     String sortArg = request.sort.get();
                     Sort sortInstance = new Sort(sortArg);
-                    //TODO: we return the sorted instance here, this won't allow sorting and paginating together
-                    return sortInstance.sort(new ArrayList<PersistentResource>(records), requestScope);
+                    sortInstance.sort(records, requestScope);
                 }
 
                 /* handle pagination */
                 if(request.first.isPresent()) {
-                    return paginate(new ArrayList<PersistentResource>(records), request);
+                    records = (List)paginate(records, request);
                 }
 
                 //TODO: Handle filtering

@@ -52,6 +52,8 @@ public class UpdateOperation {
 
     public UpdateOperation(Environment environment) {
         field = environment.field;
+
+
         requestScope = environment.requestScope;
         dictionary = requestScope.getDictionary();
         ids = environment.id;
