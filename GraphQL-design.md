@@ -35,6 +35,7 @@ The tests are located under the package `graphql` within `elide-core` > `test`
 
 ## Classes
 
+### Operation class
 First let's go over the supported operations for graphql queries/mutations. These are defined under `RelationshipOp.java` as below - 
 ```
 public enum RelationshipOp {
@@ -45,3 +46,18 @@ public enum RelationshipOp {
 }
 ```
 Refer to the `GraphQL.md` for a thorough explanation of the functionality of each operation. 
+
+### Dictionary class
+Maps non-elide entities to/from entity type names by overriding `bindEntity` method which adds the given Class `cls` to the entity dictionary. 
+```
+/**
+ * A set of reflection utilities for non-Elide entities.
+ */
+public class NonEntityDictionary extends EntityDictionary {
+     @Override
+    public void bindEntity(Class<?> cls) {
+        ...
+    }
+}
+```
+
