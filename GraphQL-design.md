@@ -299,14 +299,112 @@ Sets up some stub data to test queries on and methods to execute these queries a
 ### FetcherAddTest
 Comprehensive list of tests to test adding a new object to datastore.
 
+Example tests - 
+```
+/**
+ * Test the Add operation.
+ */
+public class FetcherAddTest extends AbstractPersistentResourceFetcherTest {
+    @Test
+    public void testCreateRootSingle() throws JsonProcessingException {
+        String graphQLRequest =
+                "mutation { " +
+                        "book(op: UPSERT, data: {title: \"Book Numero Dos\"} ) { " +
+                        "title " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"title\":\"Book Numero Dos\"" +
+                    "}]" +
+                "}";
+        assertQueryEquals(graphQLRequest, expectedResponse);
+    }
+
+    @Test
+    public void testCreateRootCollection() throws JsonProcessingException {
+        String graphQLRequest =
+                "mutation { " +
+                    "book(op: UPSERT, data: [{title: \"Book Numero Dos\"},{title:\"Book Numero Tres\"}] ) { " +
+                        "title " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"title\":\"Book Numero Dos\"" +
+                    "},{" +
+                        "\"title\":\"Book Numero Tres\"" +
+                    "}]" +
+                "}";
+
+        assertQueryEquals(graphQLRequest, expectedResponse);
+    }
+}
+```
+
 ### FetcherDeleteTest
 Comprehensive list of tests to test deleting an already existing object in datastore.
 
 ### FetcherFetchTest
 Comprehensive list of tests to test fetching an already existing object in datastore.
 
+Example tests - 
+```
+/**
+ * Test the Fetch operation.
+ */
+public class FetcherFetchTest extends AbstractPersistentResourceFetcherTest {
+    @Test
+    public void testRootSingle() throws JsonProcessingException {
+        String graphQLRequest =
+                "{" +
+                    "book(ids: [\"1\"]) { " +
+                        "id " +
+                        "title " +
+                    "}" +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"id\":\"1\"," +
+                        "\"title\":\"Libro Uno\"" +
+                    "}]" +
+                "}";
+
+        assertQueryEquals(graphQLRequest, expectedResponse);
+    }
+
+    @Test
+    public void testRootMultipleIds() throws JsonProcessingException {
+        String graphQLRequest =
+                "{ " +
+                    "book(ids: [\"1\", \"2\"]) { " +
+                        "id " +
+                        "title " +
+                    "} " +
+                "}";
+        String expectedResponse =
+                "{" +
+                    "\"book\":[{" +
+                        "\"id\":\"1\"," +
+                        "\"title\":\"Libro Uno\"" +
+                    "}," +
+                    "{" +
+                        "\"id\":\"2\"," +
+                        "\"title\":\"Libro Dos\"" +
+                    "}]" +
+                "}";
+
+        assertQueryEquals(graphQLRequest, expectedResponse);
+    }
+}
+```
+
 ### FetcherReplaceTest
 Comprehensive list of tests to test replacing an already existing object in datastore.
+
 
 #### TODO - 
 - combine add and replace into `FetcherUpsertTest.java`
