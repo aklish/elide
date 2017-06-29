@@ -47,7 +47,7 @@ public class GraphQLConversionUtils {
     public GraphQLConversionUtils(EntityDictionary dictionary) {
         this.entityDictionary = dictionary;
     }
-
+    
     /**
      * Keeps track of which non-primitive classes have been converted to GraphQL already.
      * This is primarily used to detect and avoid cycles.

@@ -140,8 +140,8 @@ public class PersistentResourceFetcher implements DataFetcher {
         GraphQLObjectType objectType;
         String uuid;
 
-        if(!request.id.isEmpty() && request.id.get(0).isPresent()) uuid = request.id.get(0).get();
-        else uuid = UUID.randomUUID().toString();
+//        if(!request.id.isEmpty() && request.id.get(0).isPresent()) uuid = request.id.get(0).get();
+        uuid = UUID.randomUUID().toString();
 
         if (request.outputType instanceof GraphQLObjectType) {
             // No parent
@@ -229,9 +229,9 @@ public class PersistentResourceFetcher implements DataFetcher {
             /* access records from internal db and return */
             HashSet recordSet = new HashSet();
             if(!request.id.isEmpty())
-            for(Object id : request.id) {
-                if(id != null) recordSet.add(PersistentResource.loadRecord(recordType, (String)id, requestScope));
-            }
+                for(Optional<String> id : request.id) {
+                    if(id.isPresent()) recordSet.add(PersistentResource.loadRecord(recordType, id.get(), requestScope));
+                }
             /* No 'ids' field is specified, return all the records with given root object */
             else {
                 List<PersistentResource> records = new ArrayList<>(PersistentResource.loadRecords(recordType, requestScope));
