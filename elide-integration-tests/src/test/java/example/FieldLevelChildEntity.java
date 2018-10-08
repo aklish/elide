@@ -6,6 +6,7 @@
 package example;
 
 import com.yahoo.elide.annotation.Include;
+import com.yahoo.elide.annotation.SharePermission;
 
 import javax.persistence.Entity;
 import javax.persistence.Table;
@@ -13,6 +14,7 @@ import javax.persistence.Table;
 @Entity
 @Table(name = "child_field_level")
 @Include(rootLevel = true, type = "fieldLevelChild")
+@SharePermission
 public class FieldLevelChildEntity extends FieldLevelParentSuperclass {
     private String childField;
 }

@@ -1,12 +1,12 @@
 {
   "data":{
-    "type":"fieldRelated",
+    "type":"fieldLevelRelated",
     "id":"99",
     "attributes":{
       "name": "a related object"
     },
     "relationships": {
-      "related_child": {
+      "relatedChild": {
         "data": {
           "type": "fieldLevelChild",
           "id": 1
