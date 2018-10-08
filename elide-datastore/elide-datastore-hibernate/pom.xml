@@ -14,7 +14,7 @@
     <parent>
         <groupId>com.yahoo.elide</groupId>
         <artifactId>elide-datastore-parent-pom</artifactId>
-        <version>4.2.4-SNAPSHOT</version>
+        <version>4.2.9-SNAPSHOT</version>
     </parent>
 
     <licenses>
@@ -64,15 +64,15 @@
         <dependency>
             <groupId>com.yahoo.elide</groupId>
             <artifactId>elide-integration-tests</artifactId>
-            <version>4.2.4-SNAPSHOT</version>
+            <version>4.2.9-SNAPSHOT</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>javax.persistence</groupId>
-            <artifactId>persistence-api</artifactId>
-            <version>1.0.2</version>
+            <artifactId>javax.persistence-api</artifactId>
+            <version>2.2</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

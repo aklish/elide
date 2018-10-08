@@ -1,6 +1,39 @@
 # Change Log
 
-## Next
+## 4.2.8
+**Fixes**
+ * Issue#696
+ * Issue#707
+
+## 4.2.7
+**Features**
+ * Add support for asterisk life cycle hooks (hooks that invoke for all fields in a model).
+
+**Fixes**
+ * Add support for multiple classloaders when using CoerceUtils.
+ * Issue#691
+ * Issue#644
+
+**Features**
+ * Both JPA Field (new) and Property (4.2.6 and earlier) Access are now supported.
+
+## 4.2.6
+**Fixes**
+ * Fix NPE serializing Dates
+
+## 4.2.5
+**Features**
+ * ISO8601 and epoch dates can be toggled in Elide Settings
+
+**Fixes**
+ * Fix NPE in HibernateEntityManagerStore
+ * Performance enhancement for DataSerializer and MapConverter
+
+## 4.2.4
+**Fixes**
+ * Fixed issues when running and building on Windows OS
+
+## 4.2.3
 **Features**
  * Add `CustomErrorException` and `ErrorObjects` to support custom error objects
  * Allow user to configure to return error objects

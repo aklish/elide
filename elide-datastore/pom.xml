@@ -14,7 +14,7 @@
     <parent>
         <groupId>com.yahoo.elide</groupId>
         <artifactId>elide-parent-pom</artifactId>
-        <version>4.2.4-SNAPSHOT</version>
+        <version>4.2.9-SNAPSHOT</version>
     </parent>
 
     <licenses>
@@ -40,7 +40,7 @@
 
     <properties>
         <parent.pom.dir>${project.basedir}/../..</parent.pom.dir>
-        <mysql.data.directory>${project.build.directory}/mysql-data</mysql.data.directory>
+        <mysql.data.directory>${java.io.tmpdir}/mysql-data</mysql.data.directory>
     </properties>
 
     <modules>
@@ -57,7 +57,7 @@
             <dependency>
                 <groupId>com.yahoo.elide</groupId>
                 <artifactId>elide-core</artifactId>
-                <version>4.2.4-SNAPSHOT</version>
+                <version>4.2.9-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>org.hibernate</groupId>
@@ -138,7 +138,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
-                    <version>2.10</version>
+                    <version>3.1.1</version>
                     <executions>
                         <execution>
                             <phase>pre-integration-test</phase>
@@ -150,7 +150,7 @@
                                     <artifactItem>
                                         <groupId>com.jcabi</groupId>
                                         <artifactId>mysql-dist</artifactId>
-                                        <version>5.6.14</version>
+                                        <version>5.5.34</version>
                                         <classifier>${mysql.classifier}</classifier>
                                         <type>zip</type>
                                         <overWrite>false</overWrite>
@@ -164,7 +164,8 @@
                 <plugin>
                     <groupId>com.jcabi</groupId>
                     <artifactId>jcabi-mysql-maven-plugin</artifactId>
-                    <version>0.9</version>
+                    <!-- Above 0.7 breaks on Windows OS: jcabi/jcabi-mysql-maven-plugin#39 -->
+                    <version>0.7</version>
                     <executions>
                         <execution>
                             <id>mysql-test</id>
@@ -176,7 +177,7 @@
                             <configuration>
                                 <port>${mysql.port}</port>
                                 <data>${mysql.data.directory}</data>
-                                <socket>/tmp/elide.sock</socket>
+                                <socket>${java.io.tmpdir}/elide.sock</socket>
                             </configuration>
                         </execution>
                     </executions>

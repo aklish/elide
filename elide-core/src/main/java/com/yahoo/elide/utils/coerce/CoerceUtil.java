@@ -7,20 +7,20 @@ package com.yahoo.elide.utils.coerce;
 
 import com.yahoo.elide.core.exceptions.InvalidAttributeException;
 import com.yahoo.elide.core.exceptions.InvalidValueException;
-import com.yahoo.elide.utils.coerce.converters.EpochToDateConverter;
 import com.yahoo.elide.utils.coerce.converters.FromMapConverter;
+import com.yahoo.elide.utils.coerce.converters.Serde;
 import com.yahoo.elide.utils.coerce.converters.ToEnumConverter;
 import com.yahoo.elide.utils.coerce.converters.ToUUIDConverter;
 import org.apache.commons.beanutils.BeanUtilsBean;
 import org.apache.commons.beanutils.ConversionException;
 import org.apache.commons.beanutils.ConvertUtils;
-import org.apache.commons.beanutils.ConvertUtilsBean;
 import org.apache.commons.beanutils.Converter;
-import org.apache.commons.lang3.ClassUtils;
 
-import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Class for coercing a value to a target class.
@@ -30,12 +30,9 @@ public class CoerceUtil {
     private static final ToEnumConverter TO_ENUM_CONVERTER = new ToEnumConverter();
     private static final ToUUIDConverter TO_UUID_CONVERTER = new ToUUIDConverter();
     private static final FromMapConverter FROM_MAP_CONVERTER = new FromMapConverter();
-    private static final EpochToDateConverter EPOCH_TO_DATE_CONVERTER = new EpochToDateConverter();
-
-    //static block for setup and registering new converters
-    static {
-        setup();
-    }
+    private static final Map<Class<?>, Serde<?, ?>> SERDES = new HashMap<>();
+    private static final BeanUtilsBean BEAN_UTILS_BEAN_INSTANCE = setup();
+    private static final Set<ClassLoader> INITIALIZED_CLASSLOADERS = ConcurrentHashMap.newKeySet();
 
     /**
      * Convert value to target class.
@@ -46,6 +43,8 @@ public class CoerceUtil {
      * @return coerced value
      */
     public static <T> T coerce(Object value, Class<T> cls) {
+        initializeClassLoaderIfNecessary();
+
         if (value == null || cls == null || cls.isAssignableFrom(value.getClass())) {
             return (T) value;
         }
@@ -57,15 +56,34 @@ public class CoerceUtil {
         }
     }
 
+    public static <S, T> void register(Class<T> targetType, Serde<S, T> serde) {
+        initializeClassLoaderIfNecessary();
+
+        SERDES.put(targetType, serde);
+        ConvertUtils.register(new Converter() {
+
+            @Override
+            public <T> T convert(Class<T> aClass, Object o) {
+                return (T) serde.deserialize((S) o);
+            }
+
+        }, targetType);
+    }
+
+    public static <S, T> Serde<S, T> lookup(Class<T> targetType) {
+        return (Serde<S, T>) SERDES.getOrDefault(targetType, null);
+    }
+
     /**
      * Perform CoerceUtil setup.
      */
-    private static void setup() {
-        BeanUtilsBean.setInstance(new BeanUtilsBean(new ConvertUtilsBean() {
+    private static BeanUtilsBean setup() {
+        return new BeanUtilsBean(new BidirectionalConvertUtilBean() {
             {
                 // https://github.com/yahoo/elide/issues/260
                 // enable throwing exceptions when conversion fails
                 register(true, false, 0);
+                register(TO_UUID_CONVERTER, UUID.class);
             }
 
             @Override
@@ -76,18 +94,31 @@ public class CoerceUtil {
             public Converter lookup(Class<?> sourceType, Class<?> targetType) {
                 if (targetType.isEnum()) {
                     return TO_ENUM_CONVERTER;
-                } else if (targetType == UUID.class) {
-                    return TO_UUID_CONVERTER;
-                }
-                else if (Map.class.isAssignableFrom(sourceType)) {
+                } else if (Map.class.isAssignableFrom(sourceType)) {
                     return FROM_MAP_CONVERTER;
-                } else if ((String.class.isAssignableFrom(sourceType) || Number.class.isAssignableFrom(sourceType))
-                        && ClassUtils.isAssignable(targetType, Date.class)) {
-                    return EPOCH_TO_DATE_CONVERTER;
                 } else {
                     return super.lookup(sourceType, targetType);
                 }
             }
-        }));
+        });
+    }
+
+    /**
+     * Initialize this classloader if necessary
+     */
+    private static void initializeClassLoaderIfNecessary() {
+        ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
+        if (INITIALIZED_CLASSLOADERS.contains(currentClassLoader)) {
+            return;
+        }
+        BeanUtilsBean.setInstance(BEAN_UTILS_BEAN_INSTANCE);
+        markClassLoaderAsInitialized();
+    }
+
+    /**
+     * Mark the current class loader as initialized.
+     */
+    private static void markClassLoaderAsInitialized() {
+        INITIALIZED_CLASSLOADERS.add(Thread.currentThread().getContextClassLoader());
     }
 }

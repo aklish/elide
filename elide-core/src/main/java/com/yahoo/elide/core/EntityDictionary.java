@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang3.StringUtils;
 
+import javax.persistence.AccessType;
 import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.Transient;
@@ -363,6 +364,15 @@ public class EntityDictionary {
      */
     public String getIdFieldName(Class<?> entityClass) {
         return getEntityBinding(entityClass).getIdFieldName();
+    }
+
+    /**
+     * Returns whether the entire entity uses Field or Property level access.
+     * @param entityClass Entity Class
+     * @return The JPA Access Type
+     */
+    public AccessType getAccessType(Class<?> entityClass) {
+        return getEntityBinding(entityClass).getAccessType();
     }
 
     /**
@@ -803,6 +813,11 @@ public class EntityDictionary {
         return getEntityBinding(cls).getTriggers(annotationClass, fieldName);
     }
 
+    public <A extends Annotation> Collection<LifeCycleHook> getTriggers(Class<?> cls,
+                                                                        Class<A> annotationClass) {
+        return getEntityBinding(cls).getTriggers(annotationClass);
+    }
+
     /**
      * Return a single annotation from field or accessor method.
      *
@@ -1000,7 +1015,8 @@ public class EntityDictionary {
     }
 
     /**
-     * Binds a lifecycle hook to a particular field or method in an entity.
+     * Binds a lifecycle hook to a particular field or method in an entity.  The hook will be called a
+     * single time per request per field READ, CREATE, or UPDATE.
      * @param entityClass The entity that triggers the lifecycle hook.
      * @param annotationClass (OnReadPostCommit, OnUpdatePreSecurity, etc)
      * @param fieldOrMethodName The name of the field or method
@@ -1014,7 +1030,31 @@ public class EntityDictionary {
     }
 
     /**
-     * Binds a lifecycle hook to a particular entity class.
+     * Binds a lifecycle hook to a particular entity class.  The hook will either be called:
+     *  - A single time single time per request per class READ, CREATE, UPDATE, or DELETE.
+     *  - Multiple times per request per field READ, CREATE, or UPDATE.
+     *
+     * The behavior is determined by the value of the {@code allowMultipleInvocations} flag.
+     * @param entityClass The entity that triggers the lifecycle hook.
+     * @param annotationClass (OnReadPostCommit, OnUpdatePreSecurity, etc)
+     * @param callback The callback function to invoke.
+     * @param allowMultipleInvocations Should the same life cycle hook be invoked multiple times for multiple
+     *                              CRUD actions on the same model.
+     */
+    public void bindTrigger(Class<?> entityClass,
+                            Class<? extends Annotation> annotationClass,
+                            LifeCycleHook callback,
+                            boolean allowMultipleInvocations) {
+        if (allowMultipleInvocations) {
+            getEntityBinding(entityClass).bindTrigger(annotationClass, callback);
+        } else {
+            getEntityBinding(entityClass).bindTrigger(annotationClass, PersistentResource.CLASS_NO_FIELD, callback);
+        }
+    }
+
+    /**
+     * Binds a lifecycle hook to a particular entity class.   The hook will be called a single time per request
+     * per class READ, CREATE, UPDATE, or DELETE.
      * @param entityClass The entity that triggers the lifecycle hook.
      * @param annotationClass (OnReadPostCommit, OnUpdatePreSecurity, etc)
      * @param callback The callback function to invoke.
@@ -1022,8 +1062,9 @@ public class EntityDictionary {
     public void bindTrigger(Class<?> entityClass,
                             Class<? extends Annotation> annotationClass,
                             LifeCycleHook callback) {
-        getEntityBinding(entityClass).bindTrigger(annotationClass, PersistentResource.CLASS_NO_FIELD, callback);
+        bindTrigger(entityClass, annotationClass, callback, false);
     }
+
 
     /**
      * Returns true if the relationship cascades deletes and false otherwise.
