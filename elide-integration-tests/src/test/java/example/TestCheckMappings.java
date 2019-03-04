@@ -5,10 +5,11 @@
  */
 package example;
 
-import com.google.common.collect.ImmutableMap;
 import com.yahoo.elide.security.checks.Check;
 import com.yahoo.elide.security.checks.prefab.Common;
 import com.yahoo.elide.security.checks.prefab.Role;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.util.HashMap;
 
@@ -38,5 +39,6 @@ public class TestCheckMappings {
                     .put("checkLE", FilterExpressionCheckObj.CheckLE.class)
                     .put("checkRestrictUser", FilterExpressionCheckObj.CheckRestrictUser.class)
                     .put("specialValue", SpecialRead.SpecialValue.class)
+                    .put("Field path editor check", Editor.FieldPathFilterExpression.class)
                     .build());
 }

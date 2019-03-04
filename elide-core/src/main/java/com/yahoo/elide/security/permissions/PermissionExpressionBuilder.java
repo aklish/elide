@@ -5,6 +5,11 @@
  */
 package com.yahoo.elide.security.permissions;
 
+import static com.yahoo.elide.parsers.expression.PermissionToFilterExpressionVisitor.FALSE_USER_CHECK_EXPRESSION;
+import static com.yahoo.elide.parsers.expression.PermissionToFilterExpressionVisitor.NO_EVALUATION_EXPRESSION;
+import static com.yahoo.elide.parsers.expression.PermissionToFilterExpressionVisitor.TRUE_USER_CHECK_EXPRESSION;
+import static com.yahoo.elide.security.permissions.expressions.Expression.Results.FAILURE;
+
 import com.yahoo.elide.annotation.ReadPermission;
 import com.yahoo.elide.core.CheckInstantiator;
 import com.yahoo.elide.core.EntityDictionary;
@@ -22,6 +27,7 @@ import com.yahoo.elide.security.permissions.expressions.CheckExpression;
 import com.yahoo.elide.security.permissions.expressions.Expression;
 import com.yahoo.elide.security.permissions.expressions.OrExpression;
 import com.yahoo.elide.security.permissions.expressions.SpecificFieldExpression;
+
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.lang.annotation.Annotation;
@@ -29,11 +35,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static com.yahoo.elide.parsers.expression.PermissionToFilterExpressionVisitor.FALSE_USER_CHECK_EXPRESSION;
-import static com.yahoo.elide.parsers.expression.PermissionToFilterExpressionVisitor.NO_EVALUATION_EXPRESSION;
-import static com.yahoo.elide.parsers.expression.PermissionToFilterExpressionVisitor.TRUE_USER_CHECK_EXPRESSION;
-import static com.yahoo.elide.security.permissions.expressions.Expression.Results.FAILURE;
 
 /**
  * Expression builder to parse annotations and express the result as the Expression AST.
@@ -76,13 +77,7 @@ public class PermissionExpressionBuilder implements CheckInstantiator {
             return SUCCESSFUL_EXPRESSION;
         }
 
-        final Function<Check, Expression> leafBuilderFn = (check) -> new CheckExpression(
-                check,
-                resource,
-                resource.getRequestScope(),
-                changeSpec,
-                cache
-        );
+        final Function<Check, Expression> leafBuilderFn = leafBuilder(resource, changeSpec);
 
         final Function<Function<Check, Expression>, Expression> buildExpressionFn =
                 (checkFn) -> buildSpecificFieldExpression(
@@ -112,13 +107,7 @@ public class PermissionExpressionBuilder implements CheckInstantiator {
             return SUCCESSFUL_EXPRESSION;
         }
 
-        final Function<Check, Expression> leafBuilderFn = (check) -> new CheckExpression(
-                check,
-                resource,
-                resource.getRequestScope(),
-                changeSpec,
-                cache
-        );
+        final Function<Check, Expression> leafBuilderFn = leafBuilder(resource, changeSpec);
 
         final Function<Function<Check, Expression>, Expression> expressionFunction =
                 (checkFn) -> buildAnyFieldExpression(
@@ -149,14 +138,7 @@ public class PermissionExpressionBuilder implements CheckInstantiator {
             return SUCCESSFUL_EXPRESSION;
         }
 
-        final Function<Check, Expression> leafBuilderFn = (check) -> new CheckExpression(
-                check,
-                resource,
-                resource.getRequestScope(),
-                null,
-                cache
-        );
-
+        final Function<Check, Expression> leafBuilderFn = leafBuilder(resource, null);
         return buildSpecificFieldExpression(new PermissionCondition(annotationClass, resource, field), leafBuilderFn);
     }
 
@@ -316,5 +298,16 @@ public class PermissionExpressionBuilder implements CheckInstantiator {
         FilterExpression expression = new PermissionToFilterExpressionVisitor(entityDictionary, scope, type)
                 .visit(permissions);
         return expression.accept(new FilterExpressionNormalizationVisitor());
+    }
+
+    private Function<Check, Expression> leafBuilder(PersistentResource resource, ChangeSpec changeSpec) {
+        final Function<Check, Expression> leafBuilderFn = (check) -> new CheckExpression(
+                check,
+                resource,
+                resource.getRequestScope(),
+                changeSpec,
+                cache
+        );
+        return leafBuilderFn;
     }
 }

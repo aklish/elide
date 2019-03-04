@@ -5,19 +5,20 @@
  */
 package com.yahoo.elide.initialization;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
+
 import com.yahoo.elide.core.DataStore;
 import com.yahoo.elide.core.EntityDictionary;
 import com.yahoo.elide.jsonapi.JsonApiMapper;
 import com.yahoo.elide.jsonapi.models.JsonApiDocument;
+
 import org.glassfish.jersey.server.ResourceConfig;
 import org.testng.annotations.BeforeClass;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.function.Supplier;
-
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.fail;
 
 /**
  * Integration test initializer.
@@ -57,10 +58,11 @@ public abstract class AbstractIntegrationTestInitializer extends AbstractApiReso
     public static DataStore getNewDatabaseManager() {
         try {
             final String dataStoreSupplierName = System.getProperty("dataStoreSupplier");
+            @SuppressWarnings("unchecked")
             Supplier<DataStore> dataStoreSupplier =
-                    (Supplier<DataStore>) Class.forName(dataStoreSupplierName).newInstance();
+                    Class.forName(dataStoreSupplierName).asSubclass(Supplier.class).newInstance();
             dataStore = dataStoreSupplier.get();
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | ClassCastException e) {
             throw new IllegalStateException(e);
         }
         return dataStore;

@@ -5,6 +5,9 @@
  */
 package com.yahoo.elide.standalone;
 
+import static com.jayway.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.hasKey;
+
 import com.yahoo.elide.ElideSettings;
 import com.yahoo.elide.ElideSettingsBuilder;
 import com.yahoo.elide.core.EntityDictionary;
@@ -12,14 +15,13 @@ import com.yahoo.elide.core.datastore.inmemory.InMemoryDataStore;
 import com.yahoo.elide.core.filter.dialect.RSQLFilterDialect;
 import com.yahoo.elide.standalone.config.ElideStandaloneSettings;
 import com.yahoo.elide.standalone.models.Post;
+
 import org.apache.http.HttpStatus;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-
-import static com.jayway.restassured.RestAssured.given;
 
 /**
  * Tests ElideStandalone starts and works
@@ -76,5 +78,24 @@ public class ElideStandaloneTest {
             .then()
             .statusCode(HttpStatus.SC_CREATED)
             .extract().body().asString();
+    }
+
+    @Test
+    public void testMetricsServlet() throws Exception {
+        given()
+                .when()
+                .get("/stats/metrics")
+                .then()
+                .statusCode(200)
+                .body("meters", hasKey("com.codahale.metrics.servlet.InstrumentedFilter.responseCodes.ok"));
+    }
+
+    @Test
+    public void testHealthCheckServlet() throws Exception {
+            given()
+                .when()
+                .get("/stats/healthcheck")
+                .then()
+                .statusCode(501); //Returns 'Not Implemented' if there are no Health Checks Registered
     }
 }

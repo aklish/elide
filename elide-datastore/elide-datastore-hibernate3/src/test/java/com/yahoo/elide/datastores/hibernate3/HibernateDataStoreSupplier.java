@@ -6,11 +6,14 @@
 package com.yahoo.elide.datastores.hibernate3;
 
 import com.yahoo.elide.core.DataStore;
+import com.yahoo.elide.models.generics.Manager;
+import com.yahoo.elide.models.triggers.Invoice;
 import com.yahoo.elide.utils.ClassScanner;
 
 import example.Filtered;
 import example.Parent;
 import example.TestCheckMappings;
+
 import org.hibernate.MappingException;
 import org.hibernate.ScrollMode;
 import org.hibernate.SessionFactory;
@@ -19,6 +22,7 @@ import org.hibernate.cfg.Environment;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 
 import java.util.function.Supplier;
+
 import javax.persistence.Entity;
 
 /**
@@ -37,15 +41,18 @@ public class HibernateDataStoreSupplier implements Supplier<DataStore> {
         try {
             ClassScanner.getAnnotatedClasses(Parent.class.getPackage(), Entity.class)
                     .forEach(configuration::addAnnotatedClass);
+            ClassScanner.getAnnotatedClasses(Manager.class.getPackage(), Entity.class)
+                    .forEach(configuration::addAnnotatedClass);
+            ClassScanner.getAnnotatedClasses(Invoice.class.getPackage(), Entity.class)
+                    .forEach(configuration::addAnnotatedClass);
         } catch (MappingException e) {
             throw new RuntimeException(e);
         }
 
         SessionFactory sessionFactory = configuration.configure("hibernate.cfg.xml")
                 .setProperty(Environment.CURRENT_SESSION_CONTEXT_CLASS, "thread")
-                .setProperty(Environment.URL, "jdbc:mysql://localhost:"
-                                + System.getProperty("mysql.port", "3306")
-                                + "/root?serverTimezone=UTC")
+                .setProperty(Environment.DIALECT, "org.hibernate.dialect.H2Dialect")
+                .setProperty(Environment.URL, "jdbc:h2:mem:root;IGNORECASE=TRUE")
                 .setProperty(Environment.USER, "root")
                 .setProperty(Environment.PASS, "root")
                 .buildSessionFactory();

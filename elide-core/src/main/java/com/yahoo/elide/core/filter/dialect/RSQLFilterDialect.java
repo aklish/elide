@@ -5,11 +5,13 @@
  */
 package com.yahoo.elide.core.filter.dialect;
 
-import com.google.common.collect.ImmutableMap;
 import com.yahoo.elide.core.EntityDictionary;
 import com.yahoo.elide.core.Path;
 import com.yahoo.elide.core.exceptions.InvalidValueException;
 import com.yahoo.elide.core.filter.FilterPredicate;
+import com.yahoo.elide.core.filter.InPredicate;
+import com.yahoo.elide.core.filter.IsNullPredicate;
+import com.yahoo.elide.core.filter.NotNullPredicate;
 import com.yahoo.elide.core.filter.Operator;
 import com.yahoo.elide.core.filter.expression.AndFilterExpression;
 import com.yahoo.elide.core.filter.expression.FilterExpression;
@@ -17,6 +19,9 @@ import com.yahoo.elide.core.filter.expression.NotFilterExpression;
 import com.yahoo.elide.core.filter.expression.OrFilterExpression;
 import com.yahoo.elide.parsers.JsonApiParser;
 import com.yahoo.elide.utils.coerce.CoerceUtil;
+
+import com.google.common.collect.ImmutableMap;
+
 import cz.jirutka.rsql.parser.RSQLParser;
 import cz.jirutka.rsql.parser.RSQLParserException;
 import cz.jirutka.rsql.parser.ast.AndNode;
@@ -27,11 +32,17 @@ import cz.jirutka.rsql.parser.ast.OrNode;
 import cz.jirutka.rsql.parser.ast.RSQLOperators;
 import cz.jirutka.rsql.parser.ast.RSQLVisitor;
 
-import javax.ws.rs.core.MultivaluedMap;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import javax.ws.rs.core.MultivaluedMap;
 
 /**
  * FilterDialect which implements support for RSQL filter dialect.
@@ -312,7 +323,7 @@ public class RSQLFilterDialect implements SubqueryFilterDialect, JoinFilterDiale
                 return new FilterPredicate(path, caseSensitivityStrategy.mapOperator(Operator.IN), values);
             }
 
-            return new FilterPredicate(path, Operator.IN, values);
+            return new InPredicate(path, values);
         }
 
         /**
@@ -325,14 +336,11 @@ public class RSQLFilterDialect implements SubqueryFilterDialect, JoinFilterDiale
         private FilterExpression buildIsNullOperator(Path path, List<String> arguments) {
             String arg = arguments.get(0);
             try {
-                Operator elideOP;
                 boolean wantsNull = CoerceUtil.coerce(arg, boolean.class);
                 if (wantsNull) {
-                    elideOP = Operator.ISNULL;
-                } else {
-                    elideOP = Operator.NOTNULL;
+                    return new IsNullPredicate(path);
                 }
-                return new FilterPredicate(path, elideOP, Collections.emptyList());
+                return new NotNullPredicate(path);
             } catch (InvalidValueException ignored) {
                 throw new RSQLParseException(String.format("Invalid value for operator =isnull= '%s'", arg));
             }

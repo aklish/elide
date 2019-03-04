@@ -11,11 +11,16 @@ import com.yahoo.elide.annotation.ComputedAttribute;
 import com.yahoo.elide.annotation.Exclude;
 import com.yahoo.elide.annotation.Include;
 import com.yahoo.elide.annotation.MappedInterface;
+import com.yahoo.elide.annotation.OnUpdatePreSecurity;
 import com.yahoo.elide.annotation.ReadPermission;
+import com.yahoo.elide.functions.LifeCycleHook;
+import com.yahoo.elide.models.generics.Employee;
+import com.yahoo.elide.models.generics.Manager;
 import com.yahoo.elide.security.checks.prefab.Collections.AppendOnly;
 import com.yahoo.elide.security.checks.prefab.Collections.RemoveOnly;
 import com.yahoo.elide.security.checks.prefab.Common.UpdateOnCreate;
 import com.yahoo.elide.security.checks.prefab.Role;
+
 import example.Child;
 import example.FieldAnnotations;
 import example.FunWithPermissions;
@@ -24,6 +29,7 @@ import example.Parent;
 import example.Right;
 import example.StringId;
 import example.User;
+
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -63,6 +69,8 @@ public class EntityDictionaryTest extends EntityDictionary {
         this.bindEntity(StringId.class);
         this.bindEntity(Friend.class);
         this.bindEntity(FieldAnnotations.class);
+        this.bindEntity(Manager.class);
+        this.bindEntity(Employee.class);
 
         checkNames.forcePut("user has all access", Role.ALL.class);
     }
@@ -101,6 +109,57 @@ public class EntityDictionaryTest extends EntityDictionary {
         this.bindInitializer(initializer, Foo.class);
 
         Assert.assertEquals(this.getAllFields(Foo.class).size(), 1);
+    }
+
+    @Test
+    public void testBindingTriggerPriorToBindingEntityClass1() {
+        @Entity
+        @Include
+        class Foo2 {
+            @Id
+            private long id;
+
+            private int bar;
+        }
+
+        LifeCycleHook<Foo2> trigger = mock(LifeCycleHook.class);
+
+        this.bindTrigger(Foo2.class, OnUpdatePreSecurity.class, "bar", trigger);
+        Assert.assertEquals(this.getAllFields(Foo2.class).size(), 1);
+    }
+
+    @Test
+    public void testBindingTriggerPriorToBindingEntityClass2() {
+        @Entity
+        @Include
+        class Foo3 {
+            @Id
+            private long id;
+
+            private int bar;
+        }
+
+        LifeCycleHook<Foo3> trigger = mock(LifeCycleHook.class);
+
+        this.bindTrigger(Foo3.class, OnUpdatePreSecurity.class, trigger, true);
+        Assert.assertEquals(this.getAllFields(Foo3.class).size(), 1);
+    }
+
+    @Test
+    public void testBindingTriggerPriorToBindingEntityClass3() {
+        @Entity
+        @Include
+        class Foo4 {
+            @Id
+            private long id;
+
+            private int bar;
+        }
+
+        LifeCycleHook<Foo4> trigger = mock(LifeCycleHook.class);
+
+        this.bindTrigger(Foo4.class, OnUpdatePreSecurity.class, trigger);
+        Assert.assertEquals(this.getAllFields(Foo4.class).size(), 1);
     }
 
     @Test
@@ -197,6 +256,15 @@ public class EntityDictionaryTest extends EntityDictionary {
 
         type = getParameterizedType(fun, "relation3");
         Assert.assertEquals(type, Child.class, "A Child object should return Child.class");
+
+        Assert.assertEquals(getParameterizedType(FieldAnnotations.class, "children"), FieldAnnotations.class,
+                "getParameterizedType return the type of a private field relationship");
+
+        Assert.assertEquals(getParameterizedType(Parent.class, "children"), Child.class,
+            "getParameterizedType returns the type of relationship fields");
+
+        Assert.assertEquals(getParameterizedType(Manager.class, "minions"), Employee.class,
+            "getParameterizedType returns the correct generic type of a to-many relationship");
     }
 
     @Test
@@ -299,7 +367,6 @@ public class EntityDictionaryTest extends EntityDictionary {
 
     @Test
     public void testGetType() throws Exception {
-
         Assert.assertEquals(getType(FieldAnnotations.class, "id"), Long.class,
             "getType returns the type of the ID field of the given class");
 
@@ -324,6 +391,12 @@ public class EntityDictionaryTest extends EntityDictionary {
 
         Assert.assertEquals(getType(Friend.class, "name"), String.class,
                 "getType returns the type of attribute when defined in a super class");
+
+        Assert.assertEquals(getType(Employee.class, "boss"), Manager.class,
+            "getType returns the correct generic type of a to-one relationship");
+
+        Assert.assertEquals(getType(Manager.class, "minions"), Set.class,
+            "getType returns the correct generic type of a to-many relationship");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

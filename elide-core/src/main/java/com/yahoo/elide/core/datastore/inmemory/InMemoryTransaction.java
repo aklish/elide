@@ -10,23 +10,20 @@ import com.yahoo.elide.core.EntityDictionary;
 import com.yahoo.elide.core.Path;
 import com.yahoo.elide.core.PersistentResource;
 import com.yahoo.elide.core.RequestScope;
-import com.yahoo.elide.core.filter.FilterPredicate;
-import com.yahoo.elide.core.filter.Operator;
+import com.yahoo.elide.core.filter.InPredicate;
 import com.yahoo.elide.core.filter.expression.AndFilterExpression;
 import com.yahoo.elide.core.filter.expression.FilterExpression;
 import com.yahoo.elide.core.filter.expression.InMemoryFilterVisitor;
 import com.yahoo.elide.core.pagination.Pagination;
 import com.yahoo.elide.core.sort.Sorting;
 import com.yahoo.elide.utils.coerce.CoerceUtil;
-import lombok.extern.slf4j.Slf4j;
 
-import javax.persistence.Id;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -40,6 +37,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import javax.persistence.Id;
 
 /**
  * InMemoryDataStore transaction handler.
@@ -185,10 +184,9 @@ public class InMemoryTransaction implements DataStoreTransaction {
                              Optional<FilterExpression> filterExpression, RequestScope scope) {
         Class idType = dictionary.getIdType(entityClass);
         String idField = dictionary.getIdFieldName(entityClass);
-        FilterExpression idFilter = new FilterPredicate(
+        FilterExpression idFilter = new InPredicate(
                 new Path.PathElement(entityClass, idType, idField),
-                Operator.IN,
-                Arrays.asList(id)
+                id
         );
         FilterExpression joinedFilterExpression = filterExpression
                 .map(fe -> (FilterExpression) new AndFilterExpression(idFilter, fe))

@@ -5,10 +5,24 @@
  */
 package com.yahoo.elide.core;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
+
 import com.yahoo.elide.Elide;
 import com.yahoo.elide.ElideResponse;
 import com.yahoo.elide.ElideSettings;
 import com.yahoo.elide.ElideSettingsBuilder;
+import com.yahoo.elide.annotation.Exclude;
 import com.yahoo.elide.annotation.Include;
 import com.yahoo.elide.annotation.OnCreatePostCommit;
 import com.yahoo.elide.annotation.OnCreatePreCommit;
@@ -23,33 +37,31 @@ import com.yahoo.elide.annotation.OnUpdatePostCommit;
 import com.yahoo.elide.annotation.OnUpdatePreCommit;
 import com.yahoo.elide.annotation.OnUpdatePreSecurity;
 import com.yahoo.elide.audit.AuditLogger;
+import com.yahoo.elide.core.datastore.inmemory.InMemoryDataStore;
 import com.yahoo.elide.functions.LifeCycleHook;
 import com.yahoo.elide.security.ChangeSpec;
 import com.yahoo.elide.security.User;
 import com.yahoo.elide.security.checks.Check;
+
 import example.Author;
 import example.Book;
+import example.Editor;
+import example.Publisher;
 import example.TestCheckMappings;
-import org.testng.Assert;
+
 import org.testng.annotations.Test;
 
-import javax.persistence.Entity;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Transient;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
 
 /**
  * Tests the invocation & sequencing of DataStoreTransaction method invocations and life cycle events.
@@ -93,6 +105,8 @@ public class LifeCycleTest {
         dictionary = new TestEntityDictionary(TestCheckMappings.MAPPINGS);
         dictionary.bindEntity(Book.class);
         dictionary.bindEntity(Author.class);
+        dictionary.bindEntity(Publisher.class);
+        dictionary.bindEntity(Editor.class);
         dictionary.bindTrigger(Book.class, OnCreatePostCommit.class, callback);
         dictionary.bindTrigger(Book.class, OnCreatePreCommit.class, callback);
         dictionary.bindTrigger(Book.class, OnCreatePreSecurity.class, callback);
@@ -247,7 +261,7 @@ public class LifeCycleTest {
         PersistentResource resource = PersistentResource.createObject(null, Book.class, scope, Optional.of("uuid"));
         resource.setValueChecked("title", "should not affect calls since this is create!");
         resource.setValueChecked("genre", "boring books");
-        Assert.assertNotNull(resource);
+        assertNotNull(resource);
         verify(book, never()).onCreateBook(scope);
         verify(book, never()).checkPermission(scope);
 
@@ -513,6 +527,341 @@ public class LifeCycleTest {
         scope.runQueuedPreCommitTriggers();
     }
 
+    /**
+     * Tests that Entities that use field level access (as opposed to properties)
+     * can register read hooks on the entity class.
+     */
+    @Test
+    public void testReadHookOnEntityFields() {
+        @Entity
+        @Include
+        class Book {
+            @Id
+            private String id;
+            private String title;
+
+            @Exclude
+            @Transient
+            private int readPreSecurityInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int readPreCommitInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int readPostCommitInvoked = 0;
+
+            @OnReadPreSecurity("title")
+            public void readPreSecurity(RequestScope scope) {
+                readPreSecurityInvoked++;
+            }
+
+            @OnReadPreCommit("title")
+            public void readPreCommit(RequestScope scope) {
+                readPreCommitInvoked++;
+            }
+
+            @OnReadPostCommit("title")
+            public void readPostCommit(RequestScope scope) {
+                readPostCommitInvoked++;
+            }
+        }
+
+        EntityDictionary dictionary = new EntityDictionary(new HashMap<>());
+        DataStoreTransaction tx = mock(DataStoreTransaction.class);
+        dictionary.bindEntity(Book.class);
+
+        Book book = new Book();
+        RequestScope scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, dictionary, MOCK_AUDIT_LOGGER),
+                false);
+        PersistentResource resource = new PersistentResource(book, null, "1", scope);
+
+        resource.getAttribute("title");
+
+        assertEquals(book.readPreSecurityInvoked, 1);
+        assertEquals(book.readPreCommitInvoked, 0);
+        scope.runQueuedPreCommitTriggers();
+        assertEquals(book.readPreCommitInvoked, 1);
+        assertEquals(book.readPostCommitInvoked, 0);
+        scope.runQueuedPostCommitTriggers();
+        assertEquals(book.readPreSecurityInvoked, 1);
+        assertEquals(book.readPreCommitInvoked, 1);
+        assertEquals(book.readPostCommitInvoked, 1);
+    }
+
+    /**
+     * Tests that Entities that use field level access (as opposed to properties)
+     * can register update hooks on the entity class.
+     */
+    @Test
+    public void testUpdateHookOnEntityFields() {
+        @Entity
+        @Include
+        class Book {
+            @Id
+            private String id;
+            private String title;
+
+            @Exclude
+            @Transient
+            private int updatePreSecurityInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int updatePreCommitInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int updatePostCommitInvoked = 0;
+
+            @OnUpdatePreSecurity("title")
+            public void updatePreSecurity(RequestScope scope) {
+                updatePreSecurityInvoked++;
+            }
+
+            @OnUpdatePreCommit("title")
+            public void updatePreCommit(RequestScope scope) {
+                updatePreCommitInvoked++;
+            }
+
+            @OnUpdatePostCommit("title")
+            public void updatePostCommit(RequestScope scope) {
+                updatePostCommitInvoked++;
+            }
+        }
+
+        EntityDictionary dictionary = new EntityDictionary(new HashMap<>());
+        DataStoreTransaction tx = mock(DataStoreTransaction.class);
+        dictionary.bindEntity(Book.class);
+
+        Book book = new Book();
+        RequestScope scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, dictionary, MOCK_AUDIT_LOGGER),
+                false);
+        PersistentResource resource = new PersistentResource(book, null, "1", scope);
+
+        resource.updateAttribute("title", "foo");
+
+        assertEquals(book.updatePreSecurityInvoked, 1);
+        assertEquals(book.updatePreCommitInvoked, 0);
+        scope.runQueuedPreCommitTriggers();
+        assertEquals(book.updatePreCommitInvoked, 1);
+        assertEquals(book.updatePostCommitInvoked, 0);
+        scope.runQueuedPostCommitTriggers();
+        assertEquals(book.updatePreSecurityInvoked, 1);
+        assertEquals(book.updatePreCommitInvoked, 1);
+        assertEquals(book.updatePostCommitInvoked, 1);
+    }
+
+    /**
+     * Tests that Entities that use field level access (as opposed to properties)
+     * can register create hooks on the entity class.
+     */
+    @Test
+    public void testCreateHookOnEntityFields() {
+        @Entity
+        @Include
+        class Book {
+            @Id
+            private String id;
+            private String title;
+
+            @Exclude
+            @Transient
+            private int createPreCommitInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int createPostCommitInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int createPreSecurityInvoked = 0;
+
+            @OnCreatePreSecurity
+            public void createPreSecurity(RequestScope scope) {
+                createPreSecurityInvoked++;
+            }
+
+            @OnCreatePreCommit("title")
+            public void createPreCommit(RequestScope scope) {
+                createPreCommitInvoked++;
+            }
+
+            @OnCreatePostCommit("title")
+            public void createPostCommit(RequestScope scope) {
+                createPostCommitInvoked++;
+            }
+        }
+
+        EntityDictionary dictionary = new EntityDictionary(new HashMap<>());
+        DataStoreTransaction tx = mock(DataStoreTransaction.class);
+        dictionary.bindEntity(Book.class);
+
+        Book book = new Book();
+        when(tx.createNewObject(Book.class)).thenReturn(book);
+        RequestScope scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, dictionary, MOCK_AUDIT_LOGGER),
+                false);
+        PersistentResource bookResource = PersistentResource.createObject(null, Book.class, scope, Optional.of("123"));
+        bookResource.updateAttribute("title", "Foo");
+
+        assertEquals(book.createPreSecurityInvoked, 0);
+        scope.runQueuedPreSecurityTriggers();
+        assertEquals(book.createPreSecurityInvoked, 1);
+        assertEquals(book.createPreCommitInvoked, 0);
+        scope.runQueuedPreCommitTriggers();
+        assertEquals(book.createPreCommitInvoked, 1);
+        assertEquals(book.createPostCommitInvoked, 0);
+        scope.runQueuedPostCommitTriggers();
+        assertEquals(book.createPreSecurityInvoked, 1);
+        assertEquals(book.createPreCommitInvoked, 1);
+        assertEquals(book.createPostCommitInvoked, 1);
+    }
+
+    /**
+     * Tests that Entities that use field level access (as opposed to properties)
+     * can register delete hooks on the entity class.
+     */
+    @Test
+    public void testDeleteHookOnEntityFields() {
+        @Entity
+        @Include
+        class Book {
+            @Id
+            private String id;
+            private String title;
+
+            @Exclude
+            @Transient
+            private int deletePreSecurityInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int deletePreCommitInvoked = 0;
+
+            @Exclude
+            @Transient
+            private int deletePostCommitInvoked = 0;
+
+            @OnDeletePreSecurity
+            public void deletePreSecurity(RequestScope scope) {
+                deletePreSecurityInvoked++;
+            }
+
+            @OnDeletePreCommit
+            public void deletePreCommit(RequestScope scope) {
+                deletePreCommitInvoked++;
+            }
+
+            @OnDeletePostCommit
+            public void deletePostCommit(RequestScope scope) {
+                deletePostCommitInvoked++;
+            }
+        }
+
+        EntityDictionary dictionary = new EntityDictionary(new HashMap<>());
+        DataStoreTransaction tx = mock(DataStoreTransaction.class);
+        dictionary.bindEntity(Book.class);
+
+        Book book = new Book();
+
+        RequestScope scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, dictionary, MOCK_AUDIT_LOGGER),
+                false);
+        PersistentResource resource = new PersistentResource(book, null, "1", scope);
+
+        resource.deleteResource();
+
+        assertEquals(book.deletePreSecurityInvoked, 1);
+        assertEquals(book.deletePreCommitInvoked, 0);
+        scope.runQueuedPreCommitTriggers();
+        assertEquals(book.deletePreCommitInvoked, 1);
+        assertEquals(book.deletePostCommitInvoked, 0);
+        scope.runQueuedPostCommitTriggers();
+        assertEquals(book.deletePreSecurityInvoked, 1);
+        assertEquals(book.deletePreCommitInvoked, 1);
+        assertEquals(book.deletePostCommitInvoked, 1);
+    }
+
+    /**
+     * Tests that Update lifecycle hooks are triggered when a relationship collection has elements added.
+     */
+    @Test
+    public void testAddToCollectionTrigger() {
+        InMemoryDataStore store = new InMemoryDataStore(Book.class.getPackage());
+        HashMap<String, Class<? extends Check>> checkMappings = new HashMap<>();
+        checkMappings.put("Book operation check", Book.BookOperationCheck.class);
+        checkMappings.put("Field path editor check", Editor.FieldPathFilterExpression.class);
+        store.populateEntityDictionary(new EntityDictionary(checkMappings));
+        DataStoreTransaction tx = store.beginTransaction();
+
+        RequestScope scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, store.getDictionary(), MOCK_AUDIT_LOGGER), false);
+
+        PersistentResource publisherResource = PersistentResource.createObject(null, Publisher.class, scope, Optional.of("1"));
+        PersistentResource book1Resource = PersistentResource.createObject(publisherResource, Book.class, scope, Optional.of("1"));
+        publisherResource.updateRelation("books", new HashSet<>(Arrays.asList(book1Resource)));
+
+        scope.runQueuedPreCommitTriggers();
+        tx.save(publisherResource.getObject(), scope);
+        tx.save(book1Resource.getObject(), scope);
+        tx.commit(scope);
+
+        Publisher publisher = (Publisher) publisherResource.getObject();
+
+        /* Only the creat hooks should be triggered */
+        assertFalse(publisher.isUpdateHookInvoked());
+
+        scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, store.getDictionary(), MOCK_AUDIT_LOGGER), false);
+
+        PersistentResource book2Resource = PersistentResource.createObject(publisherResource, Book.class, scope, Optional.of("2"));
+        publisherResource = PersistentResource.loadRecord(Publisher.class, "1", scope);
+        publisherResource.addRelation("books", book2Resource);
+
+        scope.runQueuedPreCommitTriggers();
+
+        publisher = (Publisher) publisherResource.getObject();
+        assertTrue(publisher.isUpdateHookInvoked());
+    }
+
+    /**
+     * Tests that Update lifecycle hooks are triggered when a relationship collection has elements removed.
+     */
+    @Test
+    public void testRemoveFromCollectionTrigger() {
+        InMemoryDataStore store = new InMemoryDataStore(Book.class.getPackage());
+        HashMap<String, Class<? extends Check>> checkMappings = new HashMap<>();
+        checkMappings.put("Book operation check", Book.BookOperationCheck.class);
+        checkMappings.put("Field path editor check", Editor.FieldPathFilterExpression.class);
+        store.populateEntityDictionary(new EntityDictionary(checkMappings));
+        DataStoreTransaction tx = store.beginTransaction();
+
+        RequestScope scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, store.getDictionary(), MOCK_AUDIT_LOGGER), false);
+
+        PersistentResource publisherResource = PersistentResource.createObject(null, Publisher.class, scope, Optional.of("1"));
+        PersistentResource book1Resource = PersistentResource.createObject(publisherResource, Book.class, scope, Optional.of("1"));
+        PersistentResource book2Resource = PersistentResource.createObject(publisherResource, Book.class, scope, Optional.of("2"));
+        publisherResource.updateRelation("books", new HashSet<>(Arrays.asList(book1Resource, book2Resource)));
+
+        scope.runQueuedPreCommitTriggers();
+        tx.save(publisherResource.getObject(), scope);
+        tx.save(book1Resource.getObject(), scope);
+        tx.commit(scope);
+
+        Publisher publisher = (Publisher) publisherResource.getObject();
+
+        /* Only the creat hooks should be triggered */
+        assertFalse(publisher.isUpdateHookInvoked());
+
+        scope = new RequestScope(null, null, tx, new User(1), null, getElideSettings(null, store.getDictionary(), MOCK_AUDIT_LOGGER), false);
+
+        book2Resource = PersistentResource.createObject(publisherResource, Book.class, scope, Optional.of("2"));
+        publisherResource = PersistentResource.loadRecord(Publisher.class, "1", scope);
+        publisherResource.updateRelation("books", new HashSet<>(Arrays.asList(book2Resource)));
+
+        scope.runQueuedPreCommitTriggers();
+
+        publisher = (Publisher) publisherResource.getObject();
+        assertTrue(publisher.isUpdateHookInvoked());
+    }
 
     private Elide getElide(DataStore dataStore, EntityDictionary dictionary, AuditLogger auditLogger) {
         return new Elide(getElideSettings(dataStore, dictionary, auditLogger));

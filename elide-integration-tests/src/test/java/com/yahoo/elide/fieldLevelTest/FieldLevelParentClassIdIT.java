@@ -5,12 +5,13 @@
  */
 package com.yahoo.elide.fieldLevelTest;
 
+import static com.jayway.restassured.RestAssured.given;
+
 import com.yahoo.elide.initialization.AbstractIntegrationTestInitializer;
 import com.yahoo.elide.utils.JsonParser;
+
 import org.apache.http.HttpStatus;
 import org.testng.annotations.Test;
-
-import static com.jayway.restassured.RestAssured.given;
 
 public class FieldLevelParentClassIdIT extends AbstractIntegrationTestInitializer {
     private final JsonParser jsonParser = new JsonParser();
@@ -33,16 +34,13 @@ public class FieldLevelParentClassIdIT extends AbstractIntegrationTestInitialize
         assertEqualDocuments(actual, expected);
 
         request = jsonParser.getJson("/FieldLevelIT/updateFieldLevelChildEntity.req.json");
-        expected = jsonParser.getJson("/FieldLevelIT/updateFieldLevelChildEntity.resp.json");
 
-        actual = given()
-                .contentType(JSONAPI_CONTENT_TYPE)
-                .accept(JSONAPI_CONTENT_TYPE)
-                .body(request)
-                .patch("/fieldLevelChild/1")
-                .then()
-                .statusCode(HttpStatus.SC_OK)
-                .extract().body().asString();
-        assertEqualDocuments(actual, expected);
+        given()
+            .contentType(JSONAPI_CONTENT_TYPE)
+            .accept(JSONAPI_CONTENT_TYPE)
+            .body(request)
+            .patch("/fieldLevelChild/1")
+            .then()
+            .statusCode(HttpStatus.SC_NO_CONTENT);
     }
 }

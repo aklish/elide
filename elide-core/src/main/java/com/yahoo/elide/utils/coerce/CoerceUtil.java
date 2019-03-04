@@ -11,16 +11,19 @@ import com.yahoo.elide.utils.coerce.converters.FromMapConverter;
 import com.yahoo.elide.utils.coerce.converters.Serde;
 import com.yahoo.elide.utils.coerce.converters.ToEnumConverter;
 import com.yahoo.elide.utils.coerce.converters.ToUUIDConverter;
+
+import com.google.common.collect.MapMaker;
+
 import org.apache.commons.beanutils.BeanUtilsBean;
 import org.apache.commons.beanutils.ConversionException;
 import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.beanutils.Converter;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Class for coercing a value to a target class.
@@ -32,7 +35,8 @@ public class CoerceUtil {
     private static final FromMapConverter FROM_MAP_CONVERTER = new FromMapConverter();
     private static final Map<Class<?>, Serde<?, ?>> SERDES = new HashMap<>();
     private static final BeanUtilsBean BEAN_UTILS_BEAN_INSTANCE = setup();
-    private static final Set<ClassLoader> INITIALIZED_CLASSLOADERS = ConcurrentHashMap.newKeySet();
+    private static final Set<ClassLoader> INITIALIZED_CLASSLOADERS =
+            Collections.newSetFromMap(new MapMaker().weakKeys().makeMap());
 
     /**
      * Convert value to target class.
@@ -43,7 +47,7 @@ public class CoerceUtil {
      * @return coerced value
      */
     public static <T> T coerce(Object value, Class<T> cls) {
-        initializeClassLoaderIfNecessary();
+        initializeCurrentClassLoaderIfNecessary();
 
         if (value == null || cls == null || cls.isAssignableFrom(value.getClass())) {
             return (T) value;
@@ -57,7 +61,7 @@ public class CoerceUtil {
     }
 
     public static <S, T> void register(Class<T> targetType, Serde<S, T> serde) {
-        initializeClassLoaderIfNecessary();
+        initializeCurrentClassLoaderIfNecessary();
 
         SERDES.put(targetType, serde);
         ConvertUtils.register(new Converter() {
@@ -106,19 +110,20 @@ public class CoerceUtil {
     /**
      * Initialize this classloader if necessary
      */
-    private static void initializeClassLoaderIfNecessary() {
+    private static void initializeCurrentClassLoaderIfNecessary() {
         ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
         if (INITIALIZED_CLASSLOADERS.contains(currentClassLoader)) {
             return;
         }
         BeanUtilsBean.setInstance(BEAN_UTILS_BEAN_INSTANCE);
-        markClassLoaderAsInitialized();
+        markClassLoaderAsInitialized(currentClassLoader);
     }
 
     /**
      * Mark the current class loader as initialized.
+     * @param currentClassLoader current ClassLoader
      */
-    private static void markClassLoaderAsInitialized() {
-        INITIALIZED_CLASSLOADERS.add(Thread.currentThread().getContextClassLoader());
+    private static void markClassLoaderAsInitialized(ClassLoader currentClassLoader) {
+        INITIALIZED_CLASSLOADERS.add(currentClassLoader);
     }
 }

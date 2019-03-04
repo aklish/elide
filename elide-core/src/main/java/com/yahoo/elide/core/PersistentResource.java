@@ -5,9 +5,6 @@
  */
 package com.yahoo.elide.core;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
 import com.yahoo.elide.annotation.Audit;
 import com.yahoo.elide.annotation.CreatePermission;
 import com.yahoo.elide.annotation.DeletePermission;
@@ -24,8 +21,7 @@ import com.yahoo.elide.core.exceptions.InvalidEntityBodyException;
 import com.yahoo.elide.core.exceptions.InvalidObjectIdentifierException;
 import com.yahoo.elide.core.exceptions.InvalidPredicateException;
 import com.yahoo.elide.core.exceptions.InvalidValueException;
-import com.yahoo.elide.core.filter.FilterPredicate;
-import com.yahoo.elide.core.filter.Operator;
+import com.yahoo.elide.core.filter.InPredicate;
 import com.yahoo.elide.core.filter.expression.AndFilterExpression;
 import com.yahoo.elide.core.filter.expression.FilterExpression;
 import com.yahoo.elide.core.filter.expression.InMemoryFilterVisitor;
@@ -40,13 +36,17 @@ import com.yahoo.elide.parsers.expression.CanPaginateVisitor;
 import com.yahoo.elide.security.ChangeSpec;
 import com.yahoo.elide.security.permissions.ExpressionResult;
 import com.yahoo.elide.utils.coerce.CoerceUtil;
-import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.persistence.GeneratedValue;
-import javax.ws.rs.WebApplicationException;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -71,6 +71,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import javax.persistence.GeneratedValue;
+import javax.ws.rs.WebApplicationException;
 
 /**
  * Resource wrapper around Entity bean.
@@ -883,13 +886,12 @@ public class PersistentResource<T> implements com.yahoo.elide.security.Persisten
                 .collect(Collectors.toList());
 
         /* construct a new SQL like filter expression, eg: book.id IN [1,2] */
-        FilterExpression idFilter = new FilterPredicate(
+        FilterExpression idFilter = new InPredicate(
                 new Path.PathElement(
                         entityType,
                         idType,
                         idField),
-                Operator.IN,
-                new ArrayList<>(coercedIds));
+                coercedIds);
 
         return idFilter;
     }
@@ -1402,7 +1404,8 @@ public class PersistentResource<T> implements com.yahoo.elide.security.Persisten
         } else {
             if (!collection.contains(toAdd.getObject())) {
                 collection.add(toAdd.getObject());
-                auditField(new ChangeSpec(this, collectionName, original, collection));
+
+                triggerUpdate(collectionName, original, collection);
                 return true;
             }
         }
@@ -1460,7 +1463,8 @@ public class PersistentResource<T> implements com.yahoo.elide.security.Persisten
         }
 
         collection.remove(toDelete.getObject());
-        auditField(new ChangeSpec(this, collectionName, original, collection));
+
+        triggerUpdate(collectionName, original, collection);
     }
 
     /**
@@ -1483,23 +1487,20 @@ public class PersistentResource<T> implements com.yahoo.elide.security.Persisten
         } catch (InvocationTargetException e) {
             throw handleInvocationTargetException(e);
         } catch (IllegalArgumentException | NoSuchMethodException noMethod) {
-            try {
-                Field field = targetClass.getField(fieldName);
-                field.set(obj, coerce(value, fieldName, field.getType()));
-            } catch (NoSuchFieldException | IllegalAccessException noField) {
-                throw new InvalidAttributeException(fieldName, type, noField);
+            AccessibleObject accessor = dictionary.getAccessibleObject(obj, fieldName);
+            if (accessor != null && accessor instanceof Field) {
+                Field field = (Field) accessor;
+                try {
+                    field.set(obj, coerce(value, fieldName, field.getType()));
+                } catch (IllegalAccessException noField) {
+                    throw new InvalidAttributeException(fieldName, type, noField);
+                }
+            } else {
+                throw new InvalidAttributeException(fieldName, type);
             }
         }
 
-        // Queue the @*Update triggers iff this is not a newly created object (otherwise we run @*Create)
-
-        ChangeSpec changeSpec = new ChangeSpec(this, fieldName, original, value);
-        boolean isNewlyCreated = requestScope.getNewPersistentResources().contains(this);
-        requestScope.publishLifecycleEvent(this, fieldName,
-                (isNewlyCreated) ? CRUDEvent.CRUDAction.CREATE : CRUDEvent.CRUDAction.UPDATE, Optional.of(changeSpec));
-        requestScope.publishLifecycleEvent(this,
-                (isNewlyCreated) ? CRUDEvent.CRUDAction.CREATE : CRUDEvent.CRUDAction.UPDATE);
-        auditField(new ChangeSpec(this, fieldName, original, value));
+        triggerUpdate(fieldName, original, value);
     }
 
     /**
@@ -1758,6 +1759,21 @@ public class PersistentResource<T> implements com.yahoo.elide.security.Persisten
             }
         }
         return filteredSet;
+    }
+
+    /**
+     * Queue the @*Update triggers iff this is not a newly created object (otherwise we run @*Create)
+     */
+    private void triggerUpdate(String fieldName, Object original, Object value) {
+        ChangeSpec changeSpec = new ChangeSpec(this, fieldName, original, value);
+        boolean isNewlyCreated = requestScope.getNewPersistentResources().contains(this);
+        CRUDEvent.CRUDAction action = isNewlyCreated
+                ? CRUDEvent.CRUDAction.CREATE
+                : CRUDEvent.CRUDAction.UPDATE;
+
+        requestScope.publishLifecycleEvent(this, fieldName, action, Optional.of(changeSpec));
+        requestScope.publishLifecycleEvent(this, action);
+        auditField(new ChangeSpec(this, fieldName, original, value));
     }
 
     private static <A extends Annotation> ExpressionResult checkPermission(

@@ -9,6 +9,7 @@ import com.yahoo.elide.core.DataStore;
 import com.yahoo.elide.datastores.hibernate5.AbstractHibernateStore;
 import com.yahoo.elide.datastores.multiplex.MultiplexManager;
 import com.yahoo.elide.example.beans.HibernateUser;
+
 import org.hibernate.ScrollMode;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
@@ -30,11 +31,10 @@ public class BridgeableStoreSupplier implements Supplier<DataStore> {
                 new StandardServiceRegistryBuilder()
                         .configure("hibernate.cfg.xml")
                         .applySetting(Environment.CURRENT_SESSION_CONTEXT_CLASS, "thread")
-                        .applySetting(Environment.URL, "jdbc:mysql://localhost:"
-                                + System.getProperty("mysql.port", "3306")
-                                + "/root?serverTimezone=UTC")
+                        .applySetting(Environment.URL, "jdbc:h2:mem:root;IGNORECASE=TRUE")
                         .applySetting(Environment.USER, "root")
                         .applySetting(Environment.PASS, "root")
+                        .applySetting(Environment.DIALECT, "org.hibernate.dialect.H2Dialect")
                         .build());
 
         metadataSources.addAnnotatedClass(HibernateUser.class);

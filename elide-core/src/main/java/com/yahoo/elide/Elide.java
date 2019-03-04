@@ -5,8 +5,7 @@
  */
 package com.yahoo.elide;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.yahoo.elide.Elide.HandlerResult;
 import com.yahoo.elide.audit.AuditLogger;
 import com.yahoo.elide.core.DataStore;
 import com.yahoo.elide.core.DataStoreTransaction;
@@ -33,18 +32,23 @@ import com.yahoo.elide.parsers.PatchVisitor;
 import com.yahoo.elide.parsers.PostVisitor;
 import com.yahoo.elide.security.User;
 import com.yahoo.elide.utils.coerce.CoerceUtil;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import javax.validation.ConstraintViolationException;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.MultivaluedMap;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.function.Supplier;
+
+import javax.validation.ConstraintViolationException;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MultivaluedMap;
 
 /**
  * REST Entry point handler.
@@ -87,12 +91,7 @@ public class Elide {
             JsonApiDocument jsonApiDoc = new JsonApiDocument();
             RequestScope requestScope = new RequestScope(path, jsonApiDoc, tx, user, queryParams, elideSettings, false);
             BaseVisitor visitor = new GetVisitor(requestScope);
-            try {
-                Supplier<Pair<Integer, JsonNode>> responder = visitor.visit(JsonApiParser.parse(path));
-                return new HandlerResult(requestScope, responder);
-            } catch (RuntimeException e) {
-                return new HandlerResult(requestScope, e);
-            }
+            return visit(path, requestScope, visitor);
         });
 
     }
@@ -110,12 +109,7 @@ public class Elide {
             JsonApiDocument jsonApiDoc = mapper.readJsonApiDocument(jsonApiDocument);
             RequestScope requestScope = new RequestScope(path, jsonApiDoc, tx, user, null, elideSettings, false);
             BaseVisitor visitor = new PostVisitor(requestScope);
-            try {
-                Supplier<Pair<Integer, JsonNode>> responder = visitor.visit(JsonApiParser.parse(path));
-                return new HandlerResult(requestScope, responder);
-            } catch (RuntimeException e) {
-                return new HandlerResult(requestScope, e);
-            }
+            return visit(path, requestScope, visitor);
         });
     }
 
@@ -149,12 +143,7 @@ public class Elide {
                 JsonApiDocument jsonApiDoc = mapper.readJsonApiDocument(jsonApiDocument);
                 RequestScope requestScope = new RequestScope(path, jsonApiDoc, tx, user, null, elideSettings, false);
                 BaseVisitor visitor = new PatchVisitor(requestScope);
-                try {
-                    Supplier<Pair<Integer, JsonNode>> responder = visitor.visit(JsonApiParser.parse(path));
-                    return new HandlerResult(requestScope, responder);
-                } catch (RuntimeException e) {
-                    return new HandlerResult(requestScope, e);
-                }
+                return visit(path, requestScope, visitor);
             };
         }
 
@@ -176,13 +165,17 @@ public class Elide {
                     : mapper.readJsonApiDocument(jsonApiDocument);
             RequestScope requestScope = new RequestScope(path, jsonApiDoc, tx, user, null, elideSettings, false);
             BaseVisitor visitor = new DeleteVisitor(requestScope);
-            try {
-                Supplier<Pair<Integer, JsonNode>> responder = visitor.visit(JsonApiParser.parse(path));
-                return new HandlerResult(requestScope, responder);
-            } catch (RuntimeException e) {
-                return new HandlerResult(requestScope, e);
-            }
+            return visit(path, requestScope, visitor);
         });
+    }
+
+    public HandlerResult visit(String path, RequestScope requestScope, BaseVisitor visitor) {
+        try {
+            Supplier<Pair<Integer, JsonNode>> responder = visitor.visit(JsonApiParser.parse(path));
+            return new HandlerResult(requestScope, responder);
+        } catch (RuntimeException e) {
+            return new HandlerResult(requestScope, e);
+        }
     }
 
     /**
@@ -212,9 +205,10 @@ public class Elide {
             }
             tx.flush(requestScope);
 
+            requestScope.runQueuedPreCommitTriggers();
+
             ElideResponse response = buildResponse(responder.get());
 
-            requestScope.runQueuedPreCommitTriggers();
             auditLogger.commit(requestScope);
             tx.commit(requestScope);
             requestScope.runQueuedPostCommitTriggers();

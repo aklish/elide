@@ -1,4 +1,55 @@
 # Change Log
+## 4.3.1
+**Fixes**
+ * Issue#758
+
+**Features**
+ * New method in EntityDictionary to bind a dependency injection injector function.
+
+## 4.3.0
+**Fixes**
+ * Issue#733
+
+**Features**
+ * New elide-example-models package
+ * New elide-test-helpers package
+ * Use SecurityContext as default User object
+
+## 4.2.14
+**Features**
+ * Added [Codahale InstrumentedFilter](https://metrics.dropwizard.io/3.1.0/manual/servlet/) & corresponding metrics, threads, admin servlets as a setting option for Elide Standalone.
+
+**Fixes**
+ * replaced jcabi-mysql-maven-plugin with H2 for testing
+ * Upgrade Failsafe to 2.22.1 in order to run Hibernate 5 tests.  Fixed test failure.
+
+## 4.2.13
+**Features**
+ * Add FilterPredicate sub-classes for each operation type
+
+**Fixes**
+ * Upgrade jackson databind to 2.9.8
+
+## 4.2.12
+**Fixes**
+ * Issue#730
+ * Issue#729
+
+## 4.2.11
+**Features**
+ * Add annotation FilterExpressPath to provide paths for FilterExpressionChecks
+
+## 4.2.10
+**Fixes**
+ * Upgrade Jetty Server library to address security alerts
+ * Issue#703
+ * Fix Import Order
+
+## 4.2.9
+**Fixes**
+ * Fixed IT tests that were not running.
+ * Fixed setting private attributes that are inherited.
+ * Upgrade Jackson databind library to address security alerts
 
 ## 4.2.8
 **Fixes**
@@ -10,7 +61,7 @@
  * Add support for asterisk life cycle hooks (hooks that invoke for all fields in a model).
 
 **Fixes**
- * Add support for multiple classloaders when using CoerceUtils.
+ * Add support for multiple classloaders when using CoerceUtils ([Issue #689](https://github.com/yahoo/elide/issues/689))
  * Issue#691
  * Issue#644
 

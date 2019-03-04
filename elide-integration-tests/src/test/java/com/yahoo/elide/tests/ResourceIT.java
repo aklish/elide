@@ -5,8 +5,17 @@
  */
 package com.yahoo.elide.tests;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.Sets;
+import static com.jayway.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
+import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
+
 import com.yahoo.elide.Elide;
 import com.yahoo.elide.ElideResponse;
 import com.yahoo.elide.ElideSettingsBuilder;
@@ -16,7 +25,9 @@ import com.yahoo.elide.core.EntityDictionary;
 import com.yahoo.elide.core.Path;
 import com.yahoo.elide.core.RequestScope;
 import com.yahoo.elide.core.filter.FilterPredicate;
-import com.yahoo.elide.core.filter.Operator;
+import com.yahoo.elide.core.filter.InfixPredicate;
+import com.yahoo.elide.core.filter.PostfixPredicate;
+import com.yahoo.elide.core.filter.PrefixPredicate;
 import com.yahoo.elide.core.pagination.Pagination;
 import com.yahoo.elide.initialization.AbstractIntegrationTestInitializer;
 import com.yahoo.elide.jsonapi.models.Data;
@@ -25,6 +36,10 @@ import com.yahoo.elide.jsonapi.models.Resource;
 import com.yahoo.elide.jsonapi.models.ResourceIdentifier;
 import com.yahoo.elide.security.executors.BypassPermissionExecutor;
 import com.yahoo.elide.utils.JsonParser;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Sets;
+
 import example.Book;
 import example.Child;
 import example.ExceptionThrowingBean;
@@ -34,18 +49,13 @@ import example.LineItem;
 import example.Parent;
 import example.TestCheckMappings;
 import example.User;
+
 import org.apache.http.HttpStatus;
-import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.Response.Status;
-
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,15 +63,9 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.jayway.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.startsWith;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.Response.Status;
 
 /**
  * The type Config resource test.
@@ -1325,12 +1329,12 @@ public class ResourceIT extends AbstractIntegrationTestInitializer {
             .asString());
 
         JsonNode errors = result.get("errors");
-        Assert.assertNotNull(errors);
-        Assert.assertEquals(errors.size(), 1);
+        assertNotNull(errors);
+        assertEquals(errors.size(), 1);
 
         String error = errors.get(0).asText();
-        String expected = "TransactionException: Duplicate entry 'duplicate' for key 'name'";
-        Assert.assertTrue(error.equals(expected), "Error does not equal with '" + expected + "'");
+        String expected = "TransactionException:";
+        assertTrue(error.startsWith(expected), "Error does not start with '" + expected + "' but found " + error);
     }
 
     @Test(priority = 29)
@@ -1917,9 +1921,9 @@ public class ResourceIT extends AbstractIntegrationTestInitializer {
         Path.PathElement pathToTitle = new Path.PathElement(Book.class, String.class, "title");
 
         return new Object[][]{
-                {new FilterPredicate(pathToTitle, Operator.INFIX, Arrays.asList("with%perce")), 1},
-                {new FilterPredicate(pathToTitle, Operator.PREFIX, Arrays.asList("titlewith%perce")), 1},
-                {new FilterPredicate(pathToTitle, Operator.POSTFIX, Arrays.asList("with%percentage")), 1}
+                {new InfixPredicate(pathToTitle, "with%perce"), 1},
+                {new PrefixPredicate(pathToTitle, "titlewith%perce"), 1},
+                {new PostfixPredicate(pathToTitle, "with%percentage"), 1}
         };
     }
 

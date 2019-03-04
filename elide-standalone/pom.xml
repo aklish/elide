@@ -8,7 +8,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.yahoo.elide</groupId>
     <artifactId>elide-standalone</artifactId>
-    <version>4.2.9-SNAPSHOT</version>
+    <version>4.3.2-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>Elide Standalone</name>
     <description>Elide Standalone Application</description>
@@ -16,7 +16,7 @@
     <parent>
         <groupId>com.yahoo.elide</groupId>
         <artifactId>elide-parent-pom</artifactId>
-        <version>4.2.9-SNAPSHOT</version>
+        <version>4.3.2-SNAPSHOT</version>
     </parent>
 
     <licenses>
@@ -47,9 +47,10 @@
 
     <properties>
         <!-- Versions -->
-        <jetty.version>9.3.20.v20170531</jetty.version>
+        <jetty.version>9.4.12.v20180830</jetty.version>
         <jersey.version>2.26</jersey.version>
         <logback.version>1.2.3</logback.version>
+        <metrics.version>4.0.5</metrics.version>
 
         <!-- Settings -->
         <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
@@ -62,12 +63,12 @@
         <dependency>
             <groupId>com.yahoo.elide</groupId>
             <artifactId>elide-datastore-hibernate5</artifactId>
-            <version>4.2.9-SNAPSHOT</version>
+            <version>4.3.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.yahoo.elide</groupId>
             <artifactId>elide-graphql</artifactId>
-            <version>4.2.9-SNAPSHOT</version>
+            <version>4.3.2-SNAPSHOT</version>
         </dependency>
 
         <!-- MySQL Driver -->
@@ -124,6 +125,25 @@
             <artifactId>logback-core</artifactId>
             <version>${logback.version}</version>
             <scope>compile</scope>
+        </dependency>
+
+        <!-- Monitoring -->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-servlets</artifactId>
+            <version>${metrics.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-servlet</artifactId>
+            <version>${metrics.version}</version>
         </dependency>
 
         <!-- Various Utility Libraries -->

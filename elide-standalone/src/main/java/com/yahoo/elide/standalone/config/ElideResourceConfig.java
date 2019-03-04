@@ -5,23 +5,28 @@
  */
 package com.yahoo.elide.standalone.config;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.yahoo.elide.Elide;
 import com.yahoo.elide.ElideSettings;
 import com.yahoo.elide.core.DataStore;
 import com.yahoo.elide.core.EntityDictionary;
 import com.yahoo.elide.resources.DefaultOpaqueUserFunction;
 import com.yahoo.elide.standalone.Util;
-import lombok.extern.slf4j.Slf4j;
+
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.jersey.internal.inject.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 
-import javax.inject.Inject;
-import javax.servlet.ServletContext;
-import javax.ws.rs.core.Context;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+
+import javax.inject.Inject;
+import javax.servlet.ServletContext;
+import javax.ws.rs.core.Context;
 
 /**
  * Elide application resource configuration file.
@@ -32,6 +37,9 @@ public class ElideResourceConfig extends ResourceConfig {
     private final ServiceLocator injector;
 
     public static final String ELIDE_STANDALONE_SETTINGS_ATTR = "elideStandaloneSettings";
+
+    private static MetricRegistry metricRegistry = null;
+    private static HealthCheckRegistry healthCheckRegistry = null;
 
     /**
      * Constructor
@@ -93,5 +101,21 @@ public class ElideResourceConfig extends ResourceConfig {
      */
     private void registerFilters(List<Class<?>> filters) {
         filters.forEach(this::register);
+    }
+
+    public static MetricRegistry getMetricRegistry() {
+        if (metricRegistry == null) {
+            metricRegistry = new MetricRegistry();
+        }
+
+        return metricRegistry;
+    }
+
+    public static HealthCheckRegistry getHealthCheckRegistry() {
+        if (healthCheckRegistry == null) {
+            healthCheckRegistry = new HealthCheckRegistry();
+        }
+
+        return healthCheckRegistry;
     }
 }

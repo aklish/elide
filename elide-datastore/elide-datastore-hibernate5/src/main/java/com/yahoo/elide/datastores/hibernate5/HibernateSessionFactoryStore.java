@@ -5,9 +5,11 @@
  */
 package com.yahoo.elide.datastores.hibernate5;
 
-import com.google.common.base.Preconditions;
 import com.yahoo.elide.core.DataStoreTransaction;
 import com.yahoo.elide.core.exceptions.TransactionException;
+
+import com.google.common.base.Preconditions;
+
 import org.hibernate.ScrollMode;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -19,7 +21,7 @@ import javax.persistence.PersistenceException;
  */
 public class HibernateSessionFactoryStore extends AbstractHibernateStore {
 
-    protected HibernateSessionFactoryStore(SessionFactory aSessionFactory,
+    public HibernateSessionFactoryStore(SessionFactory aSessionFactory,
                                            boolean isScrollEnabled,
                                            ScrollMode scrollMode) {
         super(aSessionFactory, isScrollEnabled, scrollMode);

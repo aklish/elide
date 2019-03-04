@@ -14,7 +14,7 @@
     <parent>
         <artifactId>elide-parent-pom</artifactId>
         <groupId>com.yahoo.elide</groupId>
-        <version>4.2.9-SNAPSHOT</version>
+        <version>4.3.2-SNAPSHOT</version>
     </parent>
 
     <licenses>
@@ -45,6 +45,7 @@
 
     <modules>
         <module>elide-swagger</module>
+        <module>elide-test-helpers</module>
     </modules>
 
     <dependencyManagement>
@@ -52,7 +53,7 @@
             <dependency>
                 <groupId>com.yahoo.elide</groupId>
                 <artifactId>elide-core</artifactId>
-                <version>4.2.9-SNAPSHOT</version>
+                <version>4.3.2-SNAPSHOT</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -77,18 +78,6 @@
                             </configuration>
                         </execution>
                         <execution>
-                            <id>reserve-network-port-pre-integration-test</id>
-                            <phase>pre-integration-test</phase>
-                            <goals>
-                                <goal>reserve-network-port</goal>
-                            </goals>
-                            <configuration>
-                                <portNames>
-                                    <portName>mysql.port</portName>
-                                </portNames>
-                            </configuration>
-                        </execution>
-                        <execution>
                             <id>reserve-network-port-process-test-classes</id>
                             <phase>process-test-classes</phase>
                             <goals>
@@ -105,10 +94,8 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>2.19</version>
                     <configuration>
                         <systemPropertyVariables>
-                            <mysql.port>${mysql.port}</mysql.port>
                             <restassured.port>${restassured.port}</restassured.port>
                             <dataStoreSupplier>${dataStoreSupplier}</dataStoreSupplier>
                         </systemPropertyVariables>

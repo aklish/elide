@@ -5,13 +5,14 @@
  */
 package example;
 
-import com.google.common.collect.ImmutableMap;
 import com.yahoo.elide.core.PersistentResourceTest;
 import com.yahoo.elide.security.ChangeSpec;
 import com.yahoo.elide.security.PermissionExecutorTest;
 import com.yahoo.elide.security.checks.Check;
 import com.yahoo.elide.security.checks.OperationCheck;
 import com.yahoo.elide.security.checks.prefab.Role;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.util.Optional;
 
@@ -44,6 +45,7 @@ public class TestCheckMappings {
                     .put("Principal is user three", UserIdChecks.UserThreeCheck.class)
                     .put("Principal is user four", UserIdChecks.UserFourCheck.class)
                     .put("Book operation check", Book.BookOperationCheck.class)
+                    .put("Field path editor check", Editor.FieldPathFilterExpression.class)
                     .build();
 
     private static final class PrivatePermission extends OperationCheck<Object> {

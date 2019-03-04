@@ -6,8 +6,10 @@
 package example;
 
 import com.yahoo.elide.annotation.Audit;
+import com.yahoo.elide.annotation.ComputedRelationship;
 import com.yahoo.elide.annotation.CreatePermission;
 import com.yahoo.elide.annotation.DeletePermission;
+import com.yahoo.elide.annotation.FilterExpressionPath;
 import com.yahoo.elide.annotation.Include;
 import com.yahoo.elide.annotation.OnCreatePostCommit;
 import com.yahoo.elide.annotation.OnCreatePreCommit;
@@ -21,11 +23,16 @@ import com.yahoo.elide.annotation.OnReadPreSecurity;
 import com.yahoo.elide.annotation.OnUpdatePostCommit;
 import com.yahoo.elide.annotation.OnUpdatePreCommit;
 import com.yahoo.elide.annotation.OnUpdatePreSecurity;
+import com.yahoo.elide.annotation.ReadPermission;
 import com.yahoo.elide.annotation.SharePermission;
 import com.yahoo.elide.annotation.UpdatePermission;
 import com.yahoo.elide.security.ChangeSpec;
 import com.yahoo.elide.security.RequestScope;
 import com.yahoo.elide.security.checks.OperationCheck;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Optional;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -34,10 +41,7 @@ import javax.persistence.Id;
 import javax.persistence.ManyToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Optional;
+import javax.persistence.Transient;
 
 /**
  * Model for books.
@@ -54,15 +58,6 @@ import java.util.Optional;
         logStatement = "{0}",
         logExpressions = {"${book.title}"})
 public class Book {
-    static public class BookOperationCheck extends OperationCheck<Book> {
-        @Override
-        public boolean ok(Book book, RequestScope requestScope, Optional<ChangeSpec> changeSpec) {
-            // trigger method for testing
-            book.checkPermission(requestScope);
-            return true;
-        }
-    }
-
     private long id;
     private String title;
     private String genre;
@@ -128,6 +123,15 @@ public class Book {
 
     public void setPublisher(Publisher publisher) {
         this.publisher = publisher;
+    }
+
+    @Transient
+    @ComputedRelationship
+    @OneToOne
+    @FilterExpressionPath("publisher.editor")
+    @ReadPermission(expression = "Field path editor check")
+    public Editor getEditor() {
+        return getPublisher().getEditor();
     }
 
     @OnUpdatePreSecurity("title")
@@ -217,5 +221,14 @@ public class Book {
     @OnUpdatePreCommit
     public void alwaysOnUpdate() {
         // should be called on _any_ class update
+    }
+
+    static public class BookOperationCheck extends OperationCheck<Book> {
+        @Override
+        public boolean ok(Book book, RequestScope requestScope, Optional<ChangeSpec> changeSpec) {
+            // trigger method for testing
+            book.checkPermission(requestScope);
+            return true;
+        }
     }
 }

@@ -6,11 +6,14 @@
 package com.yahoo.elide.datastores.hibernate5;
 
 import com.yahoo.elide.core.DataStore;
+import com.yahoo.elide.models.generics.Manager;
+import com.yahoo.elide.models.triggers.Invoice;
 import com.yahoo.elide.utils.ClassScanner;
 
 import example.Filtered;
 import example.Parent;
 import example.TestCheckMappings;
+
 import org.hibernate.MappingException;
 import org.hibernate.ScrollMode;
 import org.hibernate.boot.MetadataSources;
@@ -22,6 +25,7 @@ import org.hibernate.tool.schema.TargetType;
 
 import java.util.EnumSet;
 import java.util.function.Supplier;
+
 import javax.persistence.Entity;
 
 /**
@@ -40,15 +44,18 @@ public class HibernateDataStoreSupplier implements Supplier<DataStore> {
                 new StandardServiceRegistryBuilder()
                         .configure("hibernate.cfg.xml")
                         .applySetting(Environment.CURRENT_SESSION_CONTEXT_CLASS, "thread")
-                        .applySetting(Environment.URL, "jdbc:mysql://localhost:"
-                                + System.getProperty("mysql.port", "3306")
-                                + "/root?serverTimezone=UTC")
+                        .applySetting(Environment.DIALECT, "org.hibernate.dialect.H2Dialect")
+                        .applySetting(Environment.URL, "jdbc:h2:mem:root;IGNORECASE=TRUE")
                         .applySetting(Environment.USER, "root")
                         .applySetting(Environment.PASS, "root")
                         .build());
 
         try {
             ClassScanner.getAnnotatedClasses(Parent.class.getPackage(), Entity.class)
+                    .forEach(metadataSources::addAnnotatedClass);
+            ClassScanner.getAnnotatedClasses(Manager.class.getPackage(), Entity.class)
+                    .forEach(metadataSources::addAnnotatedClass);
+            ClassScanner.getAnnotatedClasses(Invoice.class.getPackage(), Entity.class)
                     .forEach(metadataSources::addAnnotatedClass);
         } catch (MappingException e) {
             throw new RuntimeException(e);
