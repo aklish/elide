@@ -22,7 +22,6 @@ import java.util.Set;
 @Setter
 @UpdatePermission(expression = "Prefab.Role.All")
 @CreatePermission(expression = "Prefab.Role.All")
-@SharePermission
 public class Parent {
     @Id
     private Long id;
