@@ -7,6 +7,7 @@ package com.yahoo.elide.standalone;
 
 import static com.jayway.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
 
 import com.yahoo.elide.ElideSettings;
 import com.yahoo.elide.ElideSettingsBuilder;
@@ -14,13 +15,15 @@ import com.yahoo.elide.core.EntityDictionary;
 import com.yahoo.elide.core.datastore.inmemory.InMemoryDataStore;
 import com.yahoo.elide.core.filter.dialect.RSQLFilterDialect;
 import com.yahoo.elide.standalone.config.ElideStandaloneSettings;
-import com.yahoo.elide.standalone.models.Post;
 
+import com.yahoo.elide.standalone.models.Parent;
 import org.apache.http.HttpStatus;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import javax.ws.rs.core.MediaType;
 
 
 /**
@@ -38,7 +41,7 @@ public class ElideStandaloneTest {
             @Override
             public ElideSettings getElideSettings(ServiceLocator injector) {
                 EntityDictionary dictionary = new EntityDictionary(getCheckMappings());
-                InMemoryDataStore dataStore = new InMemoryDataStore(Post.class.getPackage());
+                InMemoryDataStore dataStore = new InMemoryDataStore(Parent.class.getPackage());
                 dataStore.populateEntityDictionary(dictionary);
 
                 ElideSettingsBuilder builder = new ElideSettingsBuilder(dataStore)
@@ -60,24 +63,27 @@ public class ElideStandaloneTest {
     }
 
     @Test
-    public void testJsonAPIPost() {
-        String result = given()
-            .contentType(JSONAPI_CONTENT_TYPE)
-            .accept(JSONAPI_CONTENT_TYPE)
-            .body("{\n" +
-                  "         \"data\": {\n" +
-                  "           \"type\": \"post\",\n" +
-                  "           \"id\": \"1\",\n" +
-                  "           \"attributes\": {\n" +
-                  "             \"content\": \"This is my first post. woot.\",\n" +
-                  "             \"date\" : \"0\"\n" +
-                  "           }\n" +
-                  "         }\n" +
-                  "       }")
-            .post("/api/v1/post")
+    public void testGraphQLCreate() {
+        given()
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+            .body("{ \"query\" : \"mutation { parent(op: UPSERT, data:{id: 1 parentName: \\\"foo\\\"}) { edges { node { id } } } }\"}")
+            .post("/graphql/api/v1")
             .then()
-            .statusCode(HttpStatus.SC_CREATED)
-            .extract().body().asString();
+                .log().all()
+            .statusCode(HttpStatus.SC_OK)
+                .body("errors", isEmptyOrNullString());
+
+        given()
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_JSON)
+
+            .body("{ \"query\" : \"mutation { parent(filter: \\\"id==1\\\") { edges { node { id childs(op: UPSERT, data: {id: \\\"b5aab819-4a31-41e0-a878-62a980e5e702\\\"}) { edges { node { id } } } } } } }\" }")
+            .post("/graphql/api/v1")
+            .then()
+                .log().all()
+            .statusCode(HttpStatus.SC_OK)
+                .body("errors", isEmptyOrNullString());
     }
 
     @Test
